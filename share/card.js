@@ -23,15 +23,17 @@ export function readCode(text) {
   return { code, year, persona: PERSONAS[persona - 1], ...Object.fromEntries(FIELDS.map((f, i) => [f, totals[i]])) };
 }
 
-// A short code is six of Crockford's letters, which leave out I, L, O and U. It names one card's totals,
-// which the share server keeps, so links and friend codes carry no numbers. Typing O for 0, or I or L
-// for 1, still finds it.
+// Short ids are Crockford's letters, which leave out I, L, O and U, and name totals the share server
+// keeps, so they carry no numbers. A friend code is six of them; a card link, eight, so a shared link
+// can't be used as a friend code. Typing O for 0, or I or L for 1, still finds either.
 const LETTERS = '0123456789abcdefghjkmnpqrstvwxyz';
-export function readShort(text) {
+export const CODE = 6;
+export const CARD = 8;
+export function readShort(text, size = CODE) {
   const id = String(text).toLowerCase().replace(/o/g, '0').replace(/[il]/g, '1');
-  return /^[0-9a-hjkmnp-tv-z]{6}$/.test(id) ? id : null;
+  return new RegExp(`^[0-9a-hjkmnp-tv-z]{${size}}$`).test(id) ? id : null;
 }
-export const newShort = () => Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => LETTERS[b & 31]).join('');
+export const newShort = (size = CODE) => Array.from(crypto.getRandomValues(new Uint8Array(size)), (b) => LETTERS[b & 31]).join('');
 
 // The wrap's number formats.
 const num = (n) => Math.round(n).toLocaleString('en');
@@ -163,8 +165,10 @@ export function page(d, origin, home) {
   const url = `${origin}/${d.code}`;
   const title = `My ${d.year} with AI: ${d.persona.title}`;
   const totals = stats(d).map(([v, l]) => `${v} ${l}`).join(', ');
-  const description = `${d.persona.means}. ${totals}. Compare with me: npx ai-wrapped-year --vs ${d.code}`;
-  const next = `${home}#vs=${d.code}`;
+  // Links posted before card links carried the aw1- code itself, so those still offer to compare.
+  const vs = d.code.startsWith('aw1-') ? d.code : '';
+  const description = `${d.persona.means}. ${totals}.${vs && ` Compare with me: npx ai-wrapped-year --vs ${vs}`}`;
+  const next = vs ? `${home}#vs=${vs}` : home;
   const meta = [
     ['name', 'description', description],
     ['property', 'og:type', 'website'],
