@@ -141,6 +141,8 @@ Two options reach the network, and only when you pass them:
 
 A shared link carries your friend code and nothing else. The share server draws the preview image from the code and caches it.
 
+The site, aiyearwrapped.com, counts page views and copied commands with PostHog, without cookies. Friend codes are removed before anything is sent.
+
 Shell startup files and launcher scripts are searched for the variable names above, to find profiles, and nothing else is taken from them.
 
 Prompts and replies are never stored, printed or sent. The archive holds timestamps, token counts, model names, tool names and project folder names.
