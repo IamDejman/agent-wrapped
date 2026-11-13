@@ -102,7 +102,7 @@ Adds commits, pull requests, reviews and active days for the year, through the `
 
 ## Compare with friends
 
-The second-to-last slide gives you a friend code, six letters and digits like `k7f2qa`. Send it to a friend, and paste theirs into the slide to see your totals side by side. The share buttons post a link with the same code, `share.aiyearwrapped.com/k7f2qa`, whose preview is your card. It opens [aiyearwrapped.com](https://aiyearwrapped.com/) with the compare command filled in. A friend can also run:
+The second-to-last slide gives you a friend code, six letters and digits like `k7f2qa`. Send it to a friend, and paste theirs into the slide to see your totals side by side. The share buttons post a link to your card, like `share.aiyearwrapped.com/m3qx8t2v`, which opens [aiyearwrapped.com](https://aiyearwrapped.com/). It is not your friend code, so only the people you send your code to can compare with you. A friend can also run:
 
 ```bash
 npx ai-wrapped-year --vs sam=k7f2qa
@@ -133,7 +133,7 @@ A code stands for the year, your persona and five totals: prompts, tokens, hours
 
 ## Privacy
 
-Everything is computed on your machine. The page is a single file with your numbers inside it. It reaches the network only when you copy your friend code or share your card: it sends the year, your persona and the five totals to the share server, which keeps them under your code and sends back the code. Comparing with a friend's code asks the share server for their totals.
+Everything is computed on your machine. The page is a single file with your numbers inside it. It reaches the network only when you copy your friend code or share your card: it sends the year, your persona and the five totals to the share server, which keeps them and sends back the code or the card link. Comparing with a friend's code asks the share server for their totals.
 
 Three options reach the network, and only when you pass them:
 
@@ -141,7 +141,7 @@ Three options reach the network, and only when you pass them:
 - `--compare` sends five totals (prompts, tokens, hours, streak, cost), the year and a random id to the percentile server you name. No names, projects, models or dates.
 - `--vs` with a friend code asks the share server for the totals behind it.
 
-A shared link carries your code and nothing else. The share server keeps each code's totals and nothing more: no names, IP addresses or dates.
+A shared link carries no friend code: it shows your card and nothing else. The share server keeps the totals behind each code and card link and nothing more: no names, IP addresses or dates.
 
 The site, aiyearwrapped.com, counts page views and copied commands with PostHog, without cookies. Friend codes are removed before anything is sent.
 
@@ -181,7 +181,7 @@ It keeps one row per install per year and shows ranks once 20 wraps exist (`MIN_
 
 ## Share server
 
-`share/` is the Cloudflare Worker behind share.aiyearwrapped.com. It keeps friend codes in a D1 database and turns each into the link preview: a page with the card as its image, which sends people on to the site.
+`share/` is the Cloudflare Worker behind share.aiyearwrapped.com. It keeps friend codes and card links in a D1 database, and turns each card link into the link preview: a page with the card as its image, which sends people on to the site.
 
 ```bash
 cd share && npm install

@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { inflateSync, crc32 } from 'node:zlib';
-import { PERSONAS, readCode, readShort, newShort, cardSvg, advances, page } from '../share/card.js';
+import { PERSONAS, readCode, readShort, newShort, CARD, cardSvg, advances, page } from '../share/card.js';
 import { shortCode } from '../src/compare.js';
 import { png } from '../share/png.js';
 
@@ -72,6 +72,18 @@ test('a short code reads back however it was typed, and new ones are always read
   }
 });
 
+test('a card link is eight letters, so it never reads as a friend code', () => {
+  assert.equal(readShort('M3QX8T2V', CARD), 'm3qx8t2v');
+  for (let i = 0; i < 500; i++) {
+    const id = newShort(CARD);
+    assert.equal(readShort(id, CARD), id);
+    assert.equal(readShort(id), null);
+    assert.equal(shortCode(`https://share.aiyearwrapped.com/${id}`), null);
+  }
+  assert.equal(readShort('k7f2qa', CARD), null);
+  assert.ok(String(file('src/wrap.html')).includes(`const CARD = ${/^[0-9a-hjkmnp-tv-z]{8}$/}`), 'the wrap reads card links with the same letters');
+});
+
 test('the CLI and the wrap find a code in whatever was pasted, the same way the server reads it', () => {
   const wrap = String(file('src/wrap.html'));
   for (const [pasted, id] of [
@@ -85,13 +97,12 @@ test('the CLI and the wrap find a code in whatever was pasted, the same way the 
   assert.ok(wrap.includes(`const SHORT = ${/^[0-9a-hjkmnp-tv-z]{6}$/}`), 'the wrap reads codes with the same letters');
 });
 
-test('a short link\'s page names the card and the site by the short code alone', () => {
-  const d = { ...readCode(codeOf(2026, 1, 4400, 3.4e9, 512, 14, 12300)), code: 'k7f2qa' };
+test('a card link\'s page shows the card and offers no way to compare with whoever posted it', () => {
+  const d = { ...readCode(codeOf(2026, 1, 4400, 3.4e9, 512, 14, 12300)), code: 'm3qx8t2v' };
   const html = page(d, 'https://share.aiyearwrapped.com', 'https://aiyearwrapped.com/');
-  assert.ok(html.includes('<meta property="og:image" content="https://share.aiyearwrapped.com/k7f2qa.png">'));
-  assert.ok(html.includes('location.replace("https://aiyearwrapped.com/#vs=k7f2qa")'));
-  assert.ok(html.includes('npx ai-wrapped-year --vs k7f2qa'));
-  assert.doesNotMatch(html, /aw1-/);
+  assert.ok(html.includes('<meta property="og:image" content="https://share.aiyearwrapped.com/m3qx8t2v.png">'));
+  assert.ok(html.includes('location.replace("https://aiyearwrapped.com/")'));
+  assert.doesNotMatch(html, /--vs|#vs=|aw1-/);
 });
 
 test('the PNG holds the pixels it was given', () => {
