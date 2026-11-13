@@ -14,16 +14,15 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232438e8'/%3E%3Cg fill='none' stroke-width='4.5' stroke-linejoin='miter' stroke-linecap='square'%3E%3Cpath d='M7 10l4 13 5-9 5 9 4-13' stroke='%23ff5c93' transform='translate(1.5 1.5)'/%3E%3Cpath d='M7 10l4 13 5-9 5 9 4-13' stroke='%23ffd23f'/%3E%3C/g%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@800;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@900&display=swap">
 <style>
-  /* The wrap's inks on paper. Blue carries the page; pink and yellow only print the offsets.
+  /* The wrap's inks on paper. Blue carries the page; pink only prints the year's offset.
      Avenir Next on Apple devices, Barlow Condensed elsewhere. */
   :root {
     --paper: #f7f7f5;
     --ink: #14205c;
     --blue: #2438e8;
     --pink: #ff5c93;
-    --yellow: #ffd23f;
     --display: "Avenir Next Condensed", "Barlow Condensed", "Roboto Condensed", "Arial Narrow", sans-serif;
     --text: "Avenir Next", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     --gutter: clamp(16px, 5vw, 72px);
@@ -35,14 +34,10 @@
   a:hover { color: var(--blue); }
   :focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
   code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.92em; }
-  p code { white-space: nowrap; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
-  /* Each band prints its heading with a second ink, named by the band's class. */
   .band { padding: clamp(48px, 7vw, 96px) var(--gutter); }
-  .band + .band .inner { padding-top: clamp(40px, 6vw, 72px); border-top: 3px solid; }
   .pink { --over: var(--pink); }
-  .yellow { --over: var(--yellow); }
   .inner { max-width: 1180px; margin: 0 auto; }
 
   /* As in the wrap: type printed twice, slightly out of register, the second ink under the first. */
@@ -83,30 +78,14 @@
   .phone { display: block; width: auto; height: min(80svh, 760px); aspect-ratio: 9 / 16; border: 0; background: var(--ink); box-shadow: 14px 14px 0 var(--pink); }
   figcaption { font-size: 15px; }
 
-  h2 { font-family: var(--display); font-size: clamp(44px, 6.4vw, 92px); font-weight: 900; line-height: 0.9; letter-spacing: -0.01em; text-wrap: balance; }
-  .band p { max-width: 46ch; font-size: clamp(19px, 1.7vw, 22px); }
-  .band h2 + p { margin-top: 24px; }
-
-  .tools { display: flex; flex-wrap: wrap; gap: 0.1em 0.5em; margin: 40px 0 36px; padding: 0; list-style: none; font-family: var(--display); font-size: clamp(30px, 4.2vw, 56px); font-weight: 800; line-height: 1.05; }
-  .tools li:nth-child(3n + 2) { color: var(--blue); }
-
-  .snippet { display: block; width: fit-content; max-width: 100%; margin-top: 32px; padding: 18px 22px; border: 2px solid currentColor; font-size: clamp(15px, 1.7vw, 20px); font-weight: 600; overflow-wrap: anywhere; }
-
-  .promises { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(24px, 4vw, 56px); margin-top: 48px; padding: 0; list-style: none; }
-  .promises li { padding-top: 18px; border-top: 3px solid currentColor; font-size: clamp(20px, 2vw, 26px); font-weight: 600; line-height: 1.25; }
-  .net { margin-top: 48px; }
-
-  footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px 32px; padding: 32px var(--gutter) 40px; background: var(--ink); color: var(--paper); font-size: 16px; }
+  footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px 32px; width: min(1180px, 100% - 2 * var(--gutter)); margin: 0 auto; padding: 28px 0 40px; border-top: 3px solid; font-size: 16px; }
   footer nav { display: flex; flex-wrap: wrap; gap: 8px 28px; }
-  footer a:hover { color: var(--yellow); }
-  footer :focus-visible { outline-color: var(--yellow); }
 
   @media (max-width: 860px) {
     .hero { min-height: 0; }
     .hero .inner { grid-template-columns: minmax(0, 1fr); }
     .phone { width: min(100%, 420px); height: auto; box-shadow: 10px 10px 0 var(--over); }
     figure { margin-right: 10px; }
-    .promises { grid-template-columns: minmax(0, 1fr); }
   }
 </style>
 </head>
@@ -138,36 +117,6 @@
         <iframe class="phone" src="demo.html#2" title="A demo wrap with made-up numbers"></iframe>
         <figcaption>A demo wrap. Tap to go forward and back.</figcaption>
       </figure>
-    </div>
-  </section>
-
-  <section class="band yellow">
-    <div class="inner">
-      <h2 class="riso" data-text="Reads the tools you use">Reads the tools you use</h2>
-      <ul class="tools" translate="no">
-        <li>Claude Code</li><li>Codex</li><li>Cursor</li><li>Antigravity</li><li>Grok</li><li>Copilot</li><li>Amp</li><li>Gemini CLI</li><li>opencode</li>
-      </ul>
-      <p>Every profile and account on the machine counts once. Using something else? <code>npx ai-wrapped-year --doctor</code> shows what it found.</p>
-    </div>
-  </section>
-
-  <section class="band pink">
-    <div class="inner">
-      <h2 class="riso" data-text="Compare with friends">Compare with friends</h2>
-      <p>Every wrap has a friend code: the year, a persona and five totals. Paste a friend's code into your wrap, or run:</p>
-      <code class="snippet">npx ai-wrapped-year --vs sam=aw1-1ka.1.3e8.1kqsbm8.2s.e.9ix</code>
-    </div>
-  </section>
-
-  <section class="band yellow">
-    <div class="inner">
-      <h2 class="riso" data-text="Stays on your machine">Stays on your machine</h2>
-      <ul class="promises">
-        <li>No sign-in and nothing to upload.</li>
-        <li>Prompts and replies are never stored, printed or sent.</li>
-        <li>The page it makes is one file with no network requests.</li>
-      </ul>
-      <p class="net">Only two options reach the network, and only when you pass them: <code>--github</code> and <code>--compare</code>.</p>
     </div>
   </section>
 </main>
