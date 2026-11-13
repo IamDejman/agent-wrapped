@@ -62,7 +62,7 @@
   .year { color: var(--blue); font-size: clamp(130px, 21vw, 300px); margin: 0.04em 0 0.08em -0.04em; }
   .about { max-width: 30ch; margin-top: 28px; font-size: clamp(19px, 1.7vw, 22px); }
 
-  .ways { display: flex; flex-wrap: wrap; gap: 4px 24px; margin-top: 36px; }
+  .ways { display: flex; flex-wrap: wrap; gap: 4px clamp(16px, 4.5vw, 24px); margin-top: 36px; }
   .ways button { padding: 6px 0; border: 0; border-bottom: 3px solid transparent; background: none; color: inherit; font: 700 17px var(--text); cursor: pointer; touch-action: manipulation; }
   .ways button:hover { color: var(--blue); }
   .ways [aria-pressed="true"] { border-color: var(--blue); color: var(--blue); }
@@ -104,6 +104,7 @@
           <button type="button" aria-pressed="true" data-cmd="npx ai-wrapped-year" data-needs="Needs Node 22.13 or newer.">npx</button>
           <button type="button" aria-pressed="false" data-cmd="pnpm dlx ai-wrapped-year" data-needs="Needs Node 22.13 or newer.">pnpm</button>
           <button type="button" aria-pressed="false" data-cmd="bunx --bun ai-wrapped-year" data-needs="Runs on Bun. No Node needed.">Bun</button>
+          <button type="button" aria-pressed="false" data-cmd="deno run -A npm:ai-wrapped-year" data-needs="Runs on Deno 2.2 or newer. No Node needed.">Deno</button>
           <button type="button" aria-pressed="false" data-cmd="brew install iamdejman/tap/ai-wrapped-year" data-needs="Then run ai-wrapped-year. Homebrew installs Node for you.">Homebrew</button>
         </div>
         <div class="run">
