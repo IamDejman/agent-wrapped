@@ -183,6 +183,8 @@ It keeps one row per install per year and shows ranks once 20 wraps exist (`MIN_
 cd share && npm install && npx wrangler dev
 ```
 
+`npx wrangler deploy` publishes it, from the Cloudflare account that holds aiyearwrapped.com.
+
 ## Adding a tool
 
 A reader is one file in `src/parsers` that lists a tool's files and turns each one into events (`prompt`, `reply`, `tool`). Add it to `src/sources.js`, add a fixture test in `test/readers.test.js`, and run:
