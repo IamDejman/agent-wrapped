@@ -8,6 +8,15 @@ npx ai-wrapped-year
 
 Needs Node 22.13 or newer. No dependencies.
 
+With pnpm or Bun:
+
+```bash
+pnpm dlx ai-wrapped-year
+bunx --bun ai-wrapped-year
+```
+
+The Bun command runs on Bun alone, without Node.
+
 No Node? On a Mac or Linux, Homebrew installs it for you:
 
 ```bash
