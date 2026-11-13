@@ -29,7 +29,7 @@ See a demo wrap at [aiyearwrapped.com](https://aiyearwrapped.com/).
 
 ## What you get
 
-A page of slides, like a music app's year in review: prompts, tokens, hours, your longest streak, busiest day, top projects, models, what it would have cost at list prices, what caching saved, and a persona. The last slide saves a 1080x1920 image for sharing.
+A page of slides, like a music app's year in review: prompts, tokens, hours, your longest streak, busiest day, top projects, models, what it would have cost at list prices, what caching saved, and a persona. The last slide saves a 1080x1920 image for sharing, and the save button at the top saves any other slide the same way (on a phone it opens the share sheet). Top project and Compare have no save button, since they show your project's name and your friend code.
 
 ## Tools it reads
 
