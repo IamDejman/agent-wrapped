@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * The percentile server behind `agent-wrapped --compare`. No dependencies.
+ * The percentile server behind `ai-wrapped-year --compare`. No dependencies.
  *
  *   POST /v1/wraps  { id, year, prompts, tokens, hours, streak, cost }
  *     -> { n, top }   n: wraps for that year, top: the percent of them at or

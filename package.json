@@ -32,9 +32,9 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/IamDejman/agent-wrapped.git"
+    "url": "git+https://github.com/IamDejman/ai-wrapped-year.git"
   },
-  "bugs": "https://github.com/IamDejman/agent-wrapped/issues",
-  "homepage": "https://github.com/IamDejman/agent-wrapped#readme",
+  "bugs": "https://github.com/IamDejman/ai-wrapped-year/issues",
+  "homepage": "https://github.com/IamDejman/ai-wrapped-year#readme",
   "license": "MIT"
 }
