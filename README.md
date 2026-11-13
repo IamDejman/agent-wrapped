@@ -3,7 +3,7 @@
 Your year with AI coding tools, as a story you can share. It reads the logs those tools already keep on your machine, so there is nothing to sign in to and nothing to upload.
 
 ```bash
-npx agent-wrapped
+npx ai-wrapped-year
 ```
 
 Needs Node 22.13 or newer. No dependencies.
@@ -25,7 +25,7 @@ A page of slides, like a music app's year in review: prompts, tokens, hours, you
 | Gemini CLI | Written from the documented format, tested on fixtures only |
 | opencode | Written from the documented format, tested on fixtures only |
 
-Kimi Code, Windsurf, Cline, Roo Code, Continue, Goose, Qwen Code, Factory Droid, Amp and Zed are detected and reported, but not read yet. Run `npx agent-wrapped --doctor` to see what was found for each tool. For tools not read yet it prints the layout of their files (field names only, never contents), which is what a new reader needs. Paste that into an issue.
+Kimi Code, Windsurf, Cline, Roo Code, Continue, Goose, Qwen Code, Factory Droid, Amp and Zed are detected and reported, but not read yet. Run `npx ai-wrapped-year --doctor` to see what was found for each tool. For tools not read yet it prints the layout of their files (field names only, never contents), which is what a new reader needs. Paste that into an issue.
 
 Models are counted under the tool that called them. DeepSeek, Kimi or any other model used inside one of the tools above shows up there.
 
@@ -36,13 +36,13 @@ Using an API key inside one of the tools above changes nothing: the logs are the
 Calls made from your own code leave no local logs. Download the usage export (CSV) from your provider's console and add it:
 
 ```bash
-npx agent-wrapped --usage usage.csv
+npx ai-wrapped-year --usage usage.csv
 ```
 
 Cursor keeps token counts on its servers, not on disk. Add the export from its dashboard:
 
 ```bash
-npx agent-wrapped --cursor-csv cursor-usage.csv
+npx ai-wrapped-year --cursor-csv cursor-usage.csv
 ```
 
 Most tools delete old chats. Every run copies what it reads into `~/.agent-wrapped/archive`, so months you have already wrapped stay in your year after the tool removes them. Anything deleted before your first run is gone, so run it early.
@@ -50,14 +50,14 @@ Most tools delete old chats. Every run copies what it reads into `~/.agent-wrapp
 ## More than one machine
 
 ```bash
-npx agent-wrapped --export laptop.gz     # on the other machine
-npx agent-wrapped --import laptop.gz     # on this one
+npx ai-wrapped-year --export laptop.gz     # on the other machine
+npx ai-wrapped-year --import laptop.gz     # on this one
 ```
 
 ## GitHub
 
 ```bash
-npx agent-wrapped --github
+npx ai-wrapped-year --github
 ```
 
 Adds commits, pull requests, reviews and active days for the year, through the `gh` CLI you are already signed in to.
