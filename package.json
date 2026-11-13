@@ -11,7 +11,8 @@
     "src"
   ],
   "scripts": {
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "site": "node bin/agent-wrapped.js --data site/demo.json --out _site/demo.html --no-open && cp site/index.html _site/"
   },
   "engines": {
     "node": ">=22.13"
