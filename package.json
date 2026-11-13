@@ -1,6 +1,6 @@
 {
   "name": "ai-wrapped-year",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Your year with AI coding tools, computed on your own machine from the logs they already keep.",
   "type": "module",
   "bin": {
