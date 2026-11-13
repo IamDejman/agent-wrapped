@@ -95,7 +95,7 @@ let friends;
 if (args.vs) {
   const { friendCodes } = await import('../src/compare.js');
   try {
-    friends = friendCodes(args.vs);
+    friends = await friendCodes(args.vs);
   } catch (err) {
     fail(err.message, 2);
   }

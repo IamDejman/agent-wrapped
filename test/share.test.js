@@ -3,7 +3,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { inflateSync, crc32 } from 'node:zlib';
-import { PERSONAS, readCode, cardSvg, advances, page } from '../share/card.js';
+import { PERSONAS, readCode, readShort, newShort, cardSvg, advances, page } from '../share/card.js';
+import { shortCode } from '../src/compare.js';
 import { png } from '../share/png.js';
 
 const file = (path) => readFileSync(new URL(`../${path}`, import.meta.url));
@@ -58,6 +59,39 @@ test('the preview page gives apps the card and sends people on to the site', () 
   assert.ok(html.includes('<meta name="twitter:card" content="summary_large_image">'));
   assert.ok(html.includes('<meta property="og:title" content="My 2026 with AI: The Night Shift">'));
   assert.ok(html.includes(`location.replace("https://aiyearwrapped.com/#vs=${d.code}")`));
+});
+
+test('a short code reads back however it was typed, and new ones are always readable', () => {
+  assert.equal(readShort('K7F2QA'), 'k7f2qa');
+  assert.equal(readShort('b0x1y1'), 'b0x1y1');
+  assert.equal(readShort('BOXIYL'), 'b0x1y1', 'O reads as 0, I and L as 1');
+  for (const bad of ['', 'k7f2q', 'k7f2qab', 'k7f2qu', 'k7f-2q', 'favicon.ico', 'aw1-1ka']) assert.equal(readShort(bad), null, bad);
+  for (let i = 0; i < 500; i++) {
+    const id = newShort();
+    assert.equal(readShort(id), id);
+  }
+});
+
+test('the CLI and the wrap find a code in whatever was pasted, the same way the server reads it', () => {
+  const wrap = String(file('src/wrap.html'));
+  for (const [pasted, id] of [
+    ['k7f2qa', 'k7f2qa'], [' K7F2QA ', 'k7f2qa'], ['Compare with me: npx ai-wrapped-year --vs k7f2qa', 'k7f2qa'],
+    ['https://share.aiyearwrapped.com/k7f2qa', 'k7f2qa'], ['https://share.aiyearwrapped.com/k7f2qa?v=2', 'k7f2qa'],
+    ['https://aiyearwrapped.com/#vs=k7f2qa', 'k7f2qa'], ['k7f2qa.', 'k7f2qa'], ['nonsense', null], ['', null],
+  ]) {
+    assert.equal(shortCode(pasted), id, pasted);
+    if (id) assert.equal(readShort(id), id);
+  }
+  assert.ok(wrap.includes(`const SHORT = ${/^[0-9a-hjkmnp-tv-z]{6}$/}`), 'the wrap reads codes with the same letters');
+});
+
+test('a short link\'s page names the card and the site by the short code alone', () => {
+  const d = { ...readCode(codeOf(2026, 1, 4400, 3.4e9, 512, 14, 12300)), code: 'k7f2qa' };
+  const html = page(d, 'https://share.aiyearwrapped.com', 'https://aiyearwrapped.com/');
+  assert.ok(html.includes('<meta property="og:image" content="https://share.aiyearwrapped.com/k7f2qa.png">'));
+  assert.ok(html.includes('location.replace("https://aiyearwrapped.com/#vs=k7f2qa")'));
+  assert.ok(html.includes('npx ai-wrapped-year --vs k7f2qa'));
+  assert.doesNotMatch(html, /aw1-/);
 });
 
 test('the PNG holds the pixels it was given', () => {

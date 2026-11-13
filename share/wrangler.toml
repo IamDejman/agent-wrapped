@@ -9,3 +9,15 @@ routes = [{ pattern = "share.aiyearwrapped.com", custom_domain = true }]
 type = "Data"
 globs = ["**/*.ttf"]
 fallthrough = true
+
+# Short codes and the totals each stands for. Tables come from migrations/.
+[[d1_databases]]
+binding = "DB"
+database_name = "ai-wrapped-year-share"
+database_id = "cafd1a78-a027-44e2-a06b-667d09d8f6da"
+
+# New codes per address per minute, so one script can't fill the database. Addresses are not stored.
+[[ratelimits]]
+name = "MAKING"
+namespace_id = "1001"
+simple = { limit = 20, period = 60 }
