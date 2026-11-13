@@ -62,8 +62,12 @@
   .year { font-size: clamp(130px, 21vw, 300px); margin: 0.04em 0 0.08em -0.04em; }
   .about { max-width: 30ch; margin-top: 28px; font-size: clamp(19px, 1.7vw, 22px); }
 
-  .run { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px; margin-top: 36px; }
-  .cmd { display: flex; align-items: center; min-height: 56px; padding: 0 22px; border: 2px solid currentColor; font-size: clamp(17px, 1.8vw, 21px); font-weight: 600; user-select: all; }
+  .ways { display: flex; gap: 24px; margin-top: 36px; }
+  .ways button { padding: 6px 0; border: 0; border-bottom: 3px solid transparent; background: none; color: inherit; font: 700 17px var(--text); opacity: 0.7; cursor: pointer; touch-action: manipulation; }
+  .ways button:hover { opacity: 1; }
+  .ways [aria-pressed="true"] { border-color: currentColor; opacity: 1; }
+  .run { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px; margin-top: 14px; }
+  .cmd { display: flex; align-items: center; min-width: 0; min-height: 56px; padding: 10px 22px; overflow-wrap: anywhere; border: 2px solid currentColor; font-size: clamp(17px, 1.8vw, 21px); font-weight: 600; user-select: all; }
   .cmd::before { content: "$"; margin-right: 0.6em; opacity: 0.55; user-select: none; }
   .copy { min-height: 56px; min-width: 104px; padding: 0 22px; border: 0; background: var(--ink); color: var(--field); font: 700 18px var(--text); cursor: pointer; touch-action: manipulation; }
   .copy:hover { background: var(--over); color: var(--black); }
@@ -111,11 +115,15 @@
           <span class="lead">with AI</span>
         </h1>
         <p class="about">A story of your year with AI coding tools, made from the logs they already keep on your machine.</p>
+        <div class="ways" role="group" aria-label="How to run it">
+          <button type="button" aria-pressed="true" data-cmd="npx ai-wrapped-year" data-needs="Needs Node 22.13 or newer.">npx</button>
+          <button type="button" aria-pressed="false" data-cmd="brew install iamdejman/tap/ai-wrapped-year" data-needs="Then run ai-wrapped-year. Homebrew installs Node for you.">Homebrew</button>
+        </div>
         <div class="run">
           <code class="cmd" id="cmd">npx ai-wrapped-year</code>
           <button class="copy" id="copy" type="button">Copy</button>
         </div>
-        <p class="needs">Needs Node 22.13 or newer.</p>
+        <p class="needs" id="needs">Needs Node 22.13 or newer.</p>
       </div>
       <figure>
         <iframe class="phone" src="demo.html#2" title="A demo wrap with made-up numbers"></iframe>
@@ -169,6 +177,17 @@
   const big = document.getElementById('year');
   big.textContent = year;
   big.dataset.text = year;
+
+  const cmd = document.getElementById('cmd');
+  const needs = document.getElementById('needs');
+  const ways = document.querySelectorAll('.ways button');
+  for (const way of ways) {
+    way.addEventListener('click', () => {
+      for (const w of ways) w.setAttribute('aria-pressed', String(w === way));
+      cmd.textContent = way.dataset.cmd;
+      needs.textContent = way.dataset.needs;
+    });
+  }
 
   const copy = document.getElementById('copy');
   copy.addEventListener('click', async () => {

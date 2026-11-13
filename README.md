@@ -8,6 +8,13 @@ npx ai-wrapped-year
 
 Needs Node 22.13 or newer. No dependencies.
 
+No Node? On a Mac or Linux, Homebrew installs it for you:
+
+```bash
+brew install iamdejman/tap/ai-wrapped-year
+ai-wrapped-year
+```
+
 See a demo wrap at [iamdejman.github.io/ai-wrapped-year](https://iamdejman.github.io/ai-wrapped-year/).
 
 ## What you get
