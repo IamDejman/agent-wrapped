@@ -1,10 +1,10 @@
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { fileStamp, homes, ls, newest, projectName } from '../util.js';
+import { fileStamp, fullest, ls, profileDirs, projectName } from '../util.js';
 
 /** Antigravity and Antigravity IDE each keep a folder in ~/.gemini: antigravity, antigravity-ide. */
-const roots = () => homes('antigravity', { parent: path.join(os.homedir(), '.gemini'), markers: ['conversations'] });
+const roots = () => profileDirs({ name: 'antigravity', marks: ['conversations'], parent: path.join(os.homedir(), '.gemini') });
 const USER_INPUT = 14;
 const PLANNER_RESPONSE = 15;
 
@@ -96,9 +96,9 @@ let sqlite; // { DatabaseSync, summaries }, loaded once for all conversations
 
 export const antigravity = {
   id: 'antigravity',
-  homes: roots,
+  profiles: roots,
   list() {
-    return newest(
+    return fullest(
       roots().flatMap((root) => {
         const dir = path.join(root, 'conversations');
         return ls(dir)

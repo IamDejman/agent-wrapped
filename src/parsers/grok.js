@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { eachLine, fileStamp, homes, ls, newest, projectName, safeParse } from '../util.js';
+import { eachLine, fileStamp, fullest, ls, profileDirs, projectName, safeParse } from '../util.js';
 
 const WANTED = ['turn_started', 'loop_started', 'tool_started'].map((t) => Buffer.from(`"type":"${t}"`));
 const TOKENS = Buffer.from('"totalTokens"');
@@ -13,10 +13,10 @@ const TOKENS = Buffer.from('"totalTokens"');
  */
 export const grok = {
   id: 'grok',
-  homes: () => homes('.grok', { env: 'GROK_HOME', markers: ['sessions'] }),
+  profiles: () => profileDirs({ env: 'GROK_HOME', name: '.grok', marks: ['sessions'] }),
   list() {
     const out = [];
-    for (const home of this.homes()) {
+    for (const home of this.profiles()) {
       const root = path.join(home, 'sessions');
       for (const cwd of ls(root)) {
         for (const session of ls(path.join(root, cwd))) {
@@ -33,7 +33,7 @@ export const grok = {
         }
       }
     }
-    return newest(out);
+    return fullest(out);
   },
 
   async read({ dir }, emit) {

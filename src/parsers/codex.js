@@ -1,7 +1,16 @@
 import path from 'node:path';
-import { eachLine, findJsonl, homes, newest, projectName, safeParse } from '../util.js';
+import { eachLine, findJsonl, ls, profileDirs, projectName, safeParse } from '../util.js';
 
 const DIRS = ['sessions', 'archived_sessions'];
+
+/** A folder is a Codex profile when it holds rollouts: sessions/<year>/<month>/ or archived rollout files. */
+const holdsRollouts = (dir) => {
+  const sessions = path.join(dir, 'sessions');
+  return (
+    ls(sessions).some((y) => /^\d{4}$/.test(y) && ls(path.join(sessions, y)).some((m) => /^\d{2}$/.test(m))) ||
+    ls(path.join(dir, 'archived_sessions')).some((f) => f.startsWith('rollout-'))
+  );
+};
 const MARKERS = [
   'session_meta',
   'turn_context',
@@ -33,14 +42,22 @@ const usageEvent = (base, model, u) => {
  * .jsonl.zst. A rollout keeps its name through both, so the name is its identity.
  * Newer versions write token_usage_record and task_started; older ones only
  * have token_count and user_message events, so both are collected and the
- * newer record wins per file.
+ * newer record wins per file. Every profile is read (see profileDirs).
  */
 export const codex = {
   id: 'codex',
-  homes: () => homes('.codex', { env: 'CODEX_HOME', markers: DIRS }),
+  profiles: () => profileDirs({ env: 'CODEX_HOME', name: '.codex', marks: DIRS, proof: holdsRollouts }),
   list() {
-    const files = this.homes().flatMap((home) => DIRS.flatMap((dir) => findJsonl(path.join(home, dir))));
-    return newest(files.map((f) => ({ ...f, key: path.basename(f.file).replace(/\.zst$/, '') })));
+    const byName = new Map();
+    for (const home of this.profiles()) {
+      for (const dir of DIRS) {
+        for (const f of findJsonl(path.join(home, dir))) {
+          const key = path.basename(f.file).replace(/\.zst$/, '');
+          if (!byName.has(key)) byName.set(key, { ...f, key });
+        }
+      }
+    }
+    return [...byName.values()];
   },
 
   async read({ file }, emit) {

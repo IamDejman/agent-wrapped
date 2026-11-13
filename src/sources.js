@@ -21,7 +21,7 @@ export const SOURCES = [claude, codex, cursor, antigravity, grok, gemini, openco
 );
 
 const home = os.homedir();
-const vscode = (extension) => ['Code', 'Code - Insiders', 'VSCodium', 'Cursor'].flatMap((app) => appUserDirs(app).map((d) => path.join(d, 'globalStorage', extension, 'tasks')));
+const vscode = (extension) => ['Code', 'VSCodium', 'Cursor'].flatMap((app) => appUserDirs(app).map((d) => path.join(d, 'globalStorage', extension, 'tasks')));
 
 /** Tools whose history has a known home but no reader yet. They are reported, never silently skipped. */
 const UNREAD = [

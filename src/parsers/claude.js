@@ -1,29 +1,34 @@
-import os from 'node:os';
 import path from 'node:path';
-import { eachLine, findJsonl, homes, newest, projectName, safeParse } from '../util.js';
+import { appDataDirs, eachLine, findJsonl, fullest, ls, profileDirs, projectName, safeParse, search } from '../util.js';
 
 const TOOL_RESULT = Buffer.from('"type":"tool_result"');
 
+/** A folder is a Claude Code profile when projects/ holds chats under folders named after a working directory (-Users-me-code). */
+const holdsChats = (dir) => {
+  const projects = path.join(dir, 'projects');
+  return ls(projects).some((p) => /^(-|[A-Za-z]--)/.test(p) && ls(path.join(projects, p)).some((f) => f.endsWith('.jsonl')));
+};
+
+/** The Claude desktop app runs sessions of its own, and each one keeps a .claude folder inside the app's data. */
+const appSessions = () => search(appDataDirs().map((base) => path.join(base, 'Claude', 'local-agent-mode-sessions')), 5, ['projects'], holdsChats);
+
 /**
  * Claude Code transcripts: ~/.claude/projects/<project>/<session>.jsonl, with
- * subagent and workflow transcripts nested one or more folders deeper. Each
- * account or profile has its own folder (~/.claude-work), read the same way.
+ * subagent and workflow transcripts nested one or more folders deeper.
  * Most bytes are tool results and request blobs, so lines are filtered on
  * their raw prefix before any JSON.parse. Forked sessions repeat history, so
  * every event carries the id of its message for the wrap to count once.
+ * Every profile is read (see profileDirs), and so are the sessions the desktop
+ * app runs. A chat copied from one profile to another has the same path in
+ * both and only grows, so the longer copy is the one read.
  */
 export const claude = {
   id: 'claude',
-  homes: () =>
-    homes('.claude', {
-      env: 'CLAUDE_CONFIG_DIR',
-      markers: ['projects'],
-      extra: [path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'), 'claude')],
-    }),
+  profiles: () => profileDirs({ env: 'CLAUDE_CONFIG_DIR', name: '.claude', marks: ['projects'], proof: holdsChats }),
   list() {
-    return newest(
-      this.homes().flatMap((home) => {
-        const root = path.join(home, 'projects');
+    return fullest(
+      [...this.profiles(), ...appSessions()].flatMap((dir) => {
+        const root = path.join(dir, 'projects');
         return findJsonl(root).map((f) => ({ ...f, key: path.relative(root, f.file) }));
       }),
     );

@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { appUserDirs, ls, projectName, newest, safeParse, withProfiles } from '../util.js';
+import { appUserDirs, ls, projectName, fullest, safeParse, withProfiles } from '../util.js';
 
 /**
  * Copilot Chat in VS Code: User/workspaceStorage/<workspace>/chatSessions/<session>.json,
@@ -21,14 +21,14 @@ export const copilot = {
         out.push({ key: `${group}/${name}`, file, workspace, size: s.size, mtimeMs: s.mtimeMs });
       }
     };
-    for (const app of ['Code', 'Code - Insiders', 'VSCodium']) {
+    for (const app of ['Code', 'VSCodium']) {
       for (const userDir of appUserDirs(app)) {
         const root = path.join(userDir, 'workspaceStorage');
         for (const ws of ls(root)) add(path.join(root, ws, 'chatSessions'), ws, path.join(root, ws));
         for (const dir of withProfiles(userDir)) add(path.join(dir, 'globalStorage', 'emptyWindowChatSessions'), 'empty', null);
       }
     }
-    return newest(out);
+    return fullest(out);
   },
 
   read({ file, workspace }, emit) {

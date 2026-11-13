@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { homes, ls, newest, safeParse } from '../util.js';
+import { fullest, ls, profileDirs, safeParse } from '../util.js';
 
 /**
  * Gemini CLI: ~/.gemini/tmp/<project>/chats/session-*.json, one file per chat
@@ -10,10 +10,11 @@ import { homes, ls, newest, safeParse } from '../util.js';
 export const gemini = {
   id: 'gemini',
   untested: true,
-  homes: () => homes('.gemini', { markers: ['tmp'] }),
+  // GEMINI_CLI_HOME stands in for the home folder, so its history is in the .gemini folder inside it.
+  profiles: () => profileDirs({ env: 'GEMINI_CLI_HOME', within: '.gemini', name: '.gemini', marks: ['tmp'] }),
   list() {
     const out = [];
-    for (const home of this.homes()) {
+    for (const home of this.profiles()) {
       const root = path.join(home, 'tmp');
       for (const project of ls(root)) {
         const chats = path.join(root, project, 'chats');
@@ -25,7 +26,7 @@ export const gemini = {
         }
       }
     }
-    return newest(out);
+    return fullest(out);
   },
 
   read({ file }, emit) {

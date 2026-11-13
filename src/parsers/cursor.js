@@ -31,7 +31,7 @@ function workspaceFolders(userDir) {
  */
 export const cursor = {
   id: 'cursor',
-  homes: () => databases().map((d) => d.file),
+  profiles: () => databases().map((d) => path.dirname(path.dirname(d.file))),
   stamp() {
     const stamps = databases().map((d) => fileStamp(d.file)).filter(Boolean);
     return stamps.length ? stamps.map((s) => `${s.size}:${s.mtimeMs}`).join('|') : null;
