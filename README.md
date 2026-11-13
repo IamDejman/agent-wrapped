@@ -22,10 +22,11 @@ A page of slides, like a music app's year in review: prompts, tokens, hours, you
 | Antigravity | Checked against real logs |
 | Grok | Checked against real logs |
 | Copilot Chat (VS Code) | Checked against a small sample |
+| Amp | Checked against a small sample |
 | Gemini CLI | Written from the documented format, tested on fixtures only |
 | opencode | Written from the documented format, tested on fixtures only |
 
-Kimi Code, Windsurf, Cline, Roo Code, Continue, Goose, Qwen Code, Factory Droid, Amp and Zed are detected and reported, but not read yet. Run `npx ai-wrapped-year --doctor` to see what was found for each tool. For tools not read yet it prints the layout of their files (field names only, never contents), which is what a new reader needs. Paste that into an issue.
+Kimi Code, Windsurf, Cline, Roo Code, Continue, Goose, Qwen Code, Factory Droid and Zed are detected and reported, but not read yet. Run `npx ai-wrapped-year --doctor` to see what was found for each tool. For tools not read yet it prints the layout of their files (field names only, never contents), which is what a new reader needs. Paste that into an issue.
 
 Models are counted under the tool that called them. DeepSeek, Kimi or any other model used inside one of the tools above shows up there.
 
