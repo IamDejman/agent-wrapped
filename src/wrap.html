@@ -104,12 +104,17 @@
   .heat { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; grid-template-rows: repeat(7, auto); gap: 0.6cqw; margin-top: 5cqw; }
   .heat i { aspect-ratio: 1; background: currentColor; opacity: var(--o); }
 
-  .card { align-self: center; height: 100cqw; aspect-ratio: 9 / 16; margin-top: 5cqw; }
-  .actions { display: flex; gap: 3cqw; align-self: center; margin-top: 6cqw; }
+  .card { align-self: center; height: 86cqw; aspect-ratio: 9 / 16; margin-top: 4cqw; }
+  .actions { display: flex; gap: 3cqw; align-self: center; margin-top: 5cqw; }
   .save { padding: 3.2cqw 8cqw; border: 0; background: var(--ink); color: var(--field); font: 700 5cqw var(--text); cursor: pointer; touch-action: manipulation; }
   .save + .save { background: none; color: var(--ink); box-shadow: inset 0 0 0 0.6cqw var(--ink); }
   .save:hover { background: var(--over); color: var(--field); box-shadow: none; }
   .save:focus-visible { outline: 0.8cqw solid var(--over); outline-offset: 0.8cqw; }
+  .apps { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.6cqw; margin-top: 4cqw; }
+  .app { padding: 1.4cqw 2.4cqw; border: 0; background: none; color: var(--ink); box-shadow: inset 0 0 0 0.4cqw var(--ink); font: 600 3.4cqw var(--text); cursor: pointer; touch-action: manipulation; }
+  .app:hover { background: var(--ink); color: var(--field); }
+  .app:focus-visible { outline: 0.6cqw solid var(--over); outline-offset: 0.6cqw; }
+  .sent { min-height: 1.3em; margin-top: 3cqw; font-size: 3.8cqw; font-weight: 500; text-align: center; }
 </style>
 </head>
 <body>
@@ -349,6 +354,43 @@
     }, 'image/png');
   }
 
+  // A link can open an app's post box with text in it, but never with an image, so the card goes
+  // to the clipboard to be pasted in. Instagram and Discord have no such link.
+  const apple = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  const touch = matchMedia('(pointer: coarse)').matches;
+  const HOMEPAGE = 'https://github.com/IamDejman/ai-wrapped-year';
+  const APPS = (() => {
+    const post = `My ${D.year} with AI: ${D.persona.title}. ${num(T.prompts)} prompts, ${short(T.tokens.total)} tokens. Make yours with npx ai-wrapped-year`;
+    const q = encodeURIComponent;
+    return [
+      ['X', `https://x.com/intent/tweet?text=${q(post)}&url=${q(HOMEPAGE)}`],
+      ['LinkedIn', `https://www.linkedin.com/sharing/share-offsite/?url=${q(HOMEPAGE)}`],
+      ['Facebook', `https://www.facebook.com/sharer/sharer.php?u=${q(HOMEPAGE)}`],
+      ['WhatsApp', `https://wa.me/?text=${q(`${post} ${HOMEPAGE}`)}`],
+      ['Reddit', `https://www.reddit.com/submit?url=${q(HOMEPAGE)}&title=${q(post)}`],
+      apple && ['Messages', `sms:&body=${q(`${post} ${HOMEPAGE}`)}`],
+      ['Instagram', 'https://www.instagram.com/'],
+      ['Discord', 'https://discord.com/channels/@me'],
+    ].filter(Boolean);
+  })();
+  async function postTo(name, url, canvas, png, say) {
+    // Instagram takes images only from its own app, which a phone's share sheet reaches.
+    if (name === 'Instagram' && touch && canShare) return shareCard(canvas);
+    let copied = false;
+    if (name !== 'Instagram' && png && window.ClipboardItem) {
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
+        copied = true;
+      } catch {
+        // no clipboard access: the saved file is the fallback
+      }
+    }
+    if (!copied) saveCard(canvas);
+    say(copied ? `Card copied. Paste it with ${apple ? '⌘V' : 'Ctrl+V'}.` : `Card saved. Add it to your ${name === 'Messages' ? 'message' : 'post'}.`);
+    if (url.startsWith('https:')) window.open(url, '_blank', 'noopener');
+    else location.href = url;
+  }
+
   // --- slides ---------------------------------------------------------------
   const peakHour = D.hours.indexOf(Math.max(...D.hours));
   const nightPrompts = D.hours.slice(0, 5).reduce((a, b) => a + b, 0);
@@ -462,7 +504,23 @@
         b.addEventListener('click', () => run(canvas));
         return b;
       };
-      return [lead('Your year on one card'), canvas, el('div', { class: 'actions' }, canShare && button('Share', shareCard), button('Save image', saveCard))];
+      // Made ahead, so a click can put it on the clipboard straight away.
+      let png = null;
+      canvas.toBlob((blob) => (png = blob), 'image/png');
+      const sent = el('p', { class: 'sent', role: 'status' });
+      const say = (text) => (sent.textContent = text);
+      const apps = APPS.map(([name, url]) => {
+        const b = el('button', { class: 'app', type: 'button', translate: 'no' }, name);
+        b.addEventListener('click', () => postTo(name, url, canvas, png, say));
+        return b;
+      });
+      return [
+        lead('Your year on one card'),
+        canvas,
+        el('div', { class: 'actions' }, canShare && button('Share', shareCard), button('Save image', saveCard)),
+        el('div', { class: 'apps' }, apps),
+        sent,
+      ];
     },
   ].filter(Boolean);
 
