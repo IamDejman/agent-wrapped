@@ -248,12 +248,50 @@
     g.font = `600 60px ${text}`;
     g.fillText(`My ${D.year} with AI`, X, 190);
 
+    // Word wrap at the current font, then narrowed while the line count holds, so no line is left with one word.
+    const wrap = (str, width) => {
+      const at = (max) => {
+        const out = [];
+        for (const word of str.split(' ')) {
+          const line = out.length ? `${out.at(-1)} ${word}` : word;
+          if (out.length && g.measureText(line).width <= max) out[out.length - 1] = line;
+          else out.push(word);
+        }
+        return out;
+      };
+      let rows = at(width);
+      for (let max = width - 24; max > width / 2; max -= 24) {
+        const next = at(max);
+        if (next.length > rows.length) break;
+        rows = next;
+      }
+      return rows;
+    };
+
+    // What the persona means and the numbers behind it sit under the name, so
+    // the card makes sense to someone who has never seen the page. The name
+    // takes whatever height they leave.
+    const top = 1200;
+    const notes = [[D.persona.means, 700, 60, 74], [D.persona.line, 500, 46, 62]]
+      .filter(([str]) => str)
+      .map(([str, weight, px, step]) => {
+        g.font = `${weight} ${px}px ${text}`;
+        return { font: g.font, step, rows: wrap(str, W - 2 * X) };
+      });
     const words = D.persona.title.split(' ');
-    const size = Math.min(...words.map((w) => fitSize(w, 330, W - 2 * X)));
-    let y = 250;
+    const room = top - 150 - notes.reduce((h, n) => h + n.rows.length * n.step + 14, 0) - 235;
+    const size = Math.min(room / (words.length * 0.88), ...words.map((w) => fitSize(w, 300, W - 2 * X)));
+    let y = 235;
     for (const w of words) {
       y += size * 0.88;
       overprint(w, X, y, size, paper);
+    }
+    y += size * 0.16 + 14;
+    g.fillStyle = paper;
+    for (const n of notes) {
+      g.font = n.font;
+      for (const row of n.rows) g.fillText(row, X, (y += n.step));
+      y += 14;
     }
 
     const stats = [
@@ -262,19 +300,18 @@
       [String(D.streak.days), 'day streak'],
       D.cost?.total >= 1 ? [money(D.cost.total), 'at API prices'] : [D.models[0]?.name ?? '-', 'top model'],
     ];
-    const top = Math.max(y + 150, 1010);
     const col = (W - 2 * X) / 2;
     stats.forEach(([value, label], i) => {
       const sx = X + (i % 2) * col;
-      const sy = top + Math.floor(i / 2) * 310;
+      const sy = top + Math.floor(i / 2) * 250;
       g.fillStyle = paper;
       g.fillRect(sx, sy, col - 40, 6);
       g.fillStyle = yellow;
-      g.font = `900 ${fitSize(value, 150, col - 50)}px ${display}`;
-      g.fillText(value, sx, sy + 165);
+      g.font = `900 ${fitSize(value, 124, col - 50)}px ${display}`;
+      g.fillText(value, sx, sy + 136);
       g.fillStyle = paper;
-      g.font = `600 44px ${text}`;
-      g.fillText(label, sx, sy + 230);
+      g.font = `600 42px ${text}`;
+      g.fillText(label, sx, sy + 194);
     });
 
     g.fillStyle = paper;
@@ -413,10 +450,11 @@
     () => [
       lead('That makes you'),
       big(D.persona.title),
+      D.persona.means && unit(D.persona.means),
       facts(D.persona.line, rank && `Top ${rank[1]}% for ${RANKED[rank[0]] ?? rank[0]} among ${plural(D.rank.n, 'wrap')}`),
     ],
     () => {
-      const canvas = el('canvas', { class: 'card', role: 'img', 'aria-label': `Share card: ${D.persona.title}, ${num(T.prompts)} prompts, ${short(T.tokens.total)} tokens` });
+      const canvas = el('canvas', { class: 'card', role: 'img', 'aria-label': `Share card: ${[D.persona.title, D.persona.means].filter(Boolean).join(', ')}, ${num(T.prompts)} prompts, ${short(T.tokens.total)} tokens` });
       drawCard(canvas);
       const button = (label, run) => {
         const b = el('button', { class: 'save', type: 'button' }, label);

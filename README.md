@@ -120,17 +120,19 @@ Cost is tokens multiplied by each model's public list price. It is what the usag
 
 ## Personas
 
-One per wrap, first match wins:
+Every wrap gets one persona. The slide and the share image say what it means in plain words and show the numbers behind it, so the card makes sense to someone who has never run this.
 
-| Persona | Rule |
-| --- | --- |
-| The Night Shift | 30% or more of prompts between 10pm and 5am |
-| The Dawn Patrol | 30% or more of prompts between 5am and 9am |
-| The Polyglot | Second tool has 20% or more of prompts |
-| The Weekend Builder | 35% or more of prompts on Saturday and Sunday |
-| The Juggler | 5 or more projects, none above 30% of prompts |
-| The Deep Diver | One project has 60% or more of prompts |
-| The Steady Hand | Everyone else |
+The list is checked from the top and the first one that fits is yours:
+
+| Persona | What it means | You get it when |
+| --- | --- | --- |
+| The Night Shift | Works with AI late at night | 30% or more of your prompts were sent between 10pm and 5am |
+| The Dawn Patrol | Starts with AI early in the morning | 30% or more of your prompts were sent between 5am and 9am |
+| The Polyglot | Splits the work between AI tools | Your second most used tool got 20% or more of your prompts |
+| The Weekend Builder | Builds on weekends | 35% or more of your prompts were sent on a Saturday or Sunday |
+| The Juggler | Keeps many projects going at once | You worked on 5 or more projects and none got more than 30% of your prompts |
+| The Deep Diver | Puts almost everything into one project | One project got 60% or more of your prompts |
+| The Steady Hand | Works at an even pace | None of the above fits |
 
 ## Percentile server
 

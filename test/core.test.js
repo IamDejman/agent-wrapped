@@ -83,6 +83,29 @@ test('wrap: totals, months, cost, streak and repeated events', () => {
   assert.equal(data.tools[0].name, 'Claude Code');
 });
 
+test('persona: what it means and the numbers behind it', () => {
+  const hour = (h, day = 14) => new Date(2026, 0, day, h).getTime(); // 14 January 2026 is a Wednesday
+  const personaOf = (prompts) => {
+    const wrap = new Wrap(2026);
+    for (const p of prompts) wrap.add(p);
+    return wrap.finish().persona;
+  };
+  assert.deepEqual(personaOf([prompt(hour(23)), prompt(hour(2)), prompt(hour(12))]), {
+    title: 'The Night Shift',
+    means: 'Works with AI late at night',
+    line: '67% of prompts sent between 10pm and 5am',
+  });
+  assert.deepEqual(personaOf(['a', 'b', 'c', 'd', 'e'].map((project) => prompt(hour(12), { project }))), {
+    title: 'The Juggler',
+    means: 'Keeps many projects going at once',
+    line: '5 projects, none with more than 20% of prompts',
+  });
+  // Both lines are printed on the image people share, so neither names a project.
+  const diver = personaOf([prompt(hour(12)), prompt(hour(13)), prompt(hour(14)), prompt(hour(15), { project: 'beta' })]);
+  assert.deepEqual(diver, { title: 'The Deep Diver', means: 'Puts almost everything into one project', line: '75% of prompts went into one project' });
+  assert.equal(personaOf([prompt(hour(12)), prompt(hour(13), { project: 'beta' })]).title, 'The Steady Hand');
+});
+
 test('archive: unchanged files are not read again, deleted ones are kept, machines merge', async () => {
   const file = write(at('logs', 'a.log'), 'one');
   let reads = 0;
