@@ -47,6 +47,10 @@ npx ai-wrapped-year --cursor-csv cursor-usage.csv
 
 Most tools delete old chats. Every run copies what it reads into `~/.agent-wrapped/archive`, so months you have already wrapped stay in your year after the tool removes them. Anything deleted before your first run is gone, so run it early.
 
+## More than one profile
+
+If you keep separate profiles of one tool, such as `~/.claude-work` beside `~/.claude`, or `~/.codex-work` beside `~/.codex`, every profile is read and a chat that is in two of them counts once. A profile is any folder in your home folder whose name starts with the tool's default folder name and that holds history. `CLAUDE_CONFIG_DIR` and `CODEX_HOME` are read too, and each takes a comma-separated list for profiles kept somewhere else. The run says which profiles it read.
+
 ## More than one machine
 
 ```bash

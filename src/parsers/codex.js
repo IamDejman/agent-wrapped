@@ -1,8 +1,7 @@
-import os from 'node:os';
 import path from 'node:path';
-import { eachLine, findJsonl, projectName, safeParse } from '../util.js';
+import { eachLine, findJsonl, profileDirs, projectName, safeParse } from '../util.js';
 
-const HOME = process.env.CODEX_HOME || path.join(os.homedir(), '.codex');
+const DIRS = ['sessions', 'archived_sessions'];
 const MARKERS = [
   'session_meta',
   'turn_context',
@@ -34,16 +33,19 @@ const usageEvent = (base, model, u) => {
  * .jsonl.zst. A rollout keeps its name through both, so the name is its identity.
  * Newer versions write token_usage_record and task_started; older ones only
  * have token_count and user_message events, so both are collected and the
- * newer record wins per file.
+ * newer record wins per file. Every profile is read (see profileDirs).
  */
 export const codex = {
   id: 'codex',
+  profiles: () => profileDirs(process.env.CODEX_HOME, '.codex', DIRS),
   list() {
     const byName = new Map();
-    for (const dir of ['sessions', 'archived_sessions']) {
-      for (const f of findJsonl(path.join(HOME, dir))) {
-        const key = path.basename(f.file).replace(/\.zst$/, '');
-        if (!byName.has(key)) byName.set(key, { ...f, key });
+    for (const home of this.profiles()) {
+      for (const dir of DIRS) {
+        for (const f of findJsonl(path.join(home, dir))) {
+          const key = path.basename(f.file).replace(/\.zst$/, '');
+          if (!byName.has(key)) byName.set(key, { ...f, key });
+        }
       }
     }
     return [...byName.values()];

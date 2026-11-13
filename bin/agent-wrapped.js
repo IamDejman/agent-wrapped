@@ -17,6 +17,7 @@ const { Archive, HOME } = await import('../src/archive.js');
 const { SOURCES, unreadTools } = await import('../src/sources.js');
 const { Wrap } = await import('../src/stats.js');
 const { loadUsageCsv } = await import('../src/usage-csv.js');
+const { tilde } = await import('../src/util.js');
 
 const readers = SOURCES.filter((s) => s.read).map((s) => s.name);
 const HELP = `ai-wrapped-year: your year with AI coding tools, computed on this machine.
@@ -124,6 +125,8 @@ async function readLogs() {
     try {
       const { count, kept } = await archive.run(source, emit, { note, progress: (p) => status(`Reading ${source.name} ${Math.floor(p * 100)}%`) });
       if (count) found.push(source.name);
+      const profiles = count && source.profiles ? source.profiles() : [];
+      if (profiles.length > 1) note(`${source.name}: read ${profiles.length} profiles (${profiles.map(tilde).join(', ')}).`);
       if (count && source.untested) note(`${source.name}: this reader has not been checked against real history yet, so its numbers may be off.`);
       if (kept) note(`${source.name}: ${kept.toLocaleString('en')} files no longer on disk were kept from the archive.`);
     } catch (err) {

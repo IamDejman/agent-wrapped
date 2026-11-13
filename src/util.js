@@ -77,6 +77,37 @@ export function findJsonl(dir, depth = 0, out = []) {
   return out;
 }
 
+/**
+ * The folders a tool keeps its profiles in. People who use one tool with two
+ * accounts (work and personal, say) give each its own copy of the tool's
+ * folder and pick one with the tool's environment variable, so that variable
+ * only ever names the profile in use right now. This returns the folders it
+ * names (a comma-separated list works), then every folder in the home folder
+ * whose name starts with the default one (~/.claude, ~/.claude-work), keeping
+ * those that hold one of the history folders in marks. A folder reached by
+ * two names counts once.
+ */
+export function profileDirs(env, name, marks) {
+  const home = os.homedir();
+  const named = (env || '').split(',').map((d) => d.trim()).filter(Boolean);
+  const beside = ls(home).filter((n) => n.startsWith(name)).sort().map((n) => path.join(home, n));
+  const seen = new Set();
+  return [...named, ...beside].filter((dir) => {
+    const held = marks.map((m) => path.join(dir, m)).filter((d) => ls(d).length);
+    if (!held.length) return false;
+    const real = held.map((d) => fs.realpathSync(d)).join('\n');
+    if (seen.has(real)) return false;
+    seen.add(real);
+    return true;
+  });
+}
+
+/** A path with the home folder written as ~, for messages. */
+export function tilde(file) {
+  const home = os.homedir();
+  return file.startsWith(home + path.sep) ? `~${file.slice(home.length)}` : file;
+}
+
 /** Where a VS Code family editor keeps its User folder on macOS, Windows and Linux. */
 export function appUserDirs(app) {
   const home = os.homedir();
