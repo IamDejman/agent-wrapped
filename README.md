@@ -101,7 +101,7 @@ Adds commits, pull requests, reviews and active days for the year, through the `
 
 ## Compare with friends
 
-The second-to-last slide shows your friend code. Send it to a friend, and paste theirs into the slide to see your totals side by side. The share buttons put your code in the post. A friend can also run:
+The second-to-last slide shows your friend code. Send it to a friend, and paste theirs into the slide to see your totals side by side. The share buttons post a link whose preview is your card, and it opens [aiyearwrapped.com](https://aiyearwrapped.com/) with the compare command filled in. A friend can also run:
 
 ```bash
 npx ai-wrapped-year --vs sam=aw1-1ka.1.3e8.1kqsbm8.2s.e.9ix
@@ -139,6 +139,8 @@ Two options reach the network, and only when you pass them:
 - `--github` asks GitHub for your contribution counts through `gh`.
 - `--compare` sends five totals (prompts, tokens, hours, streak, cost), the year and a random id to the percentile server you name. No names, projects, models or dates.
 
+A shared link carries your friend code and nothing else. The share server draws the preview image from the code and caches it.
+
 Shell startup files and launcher scripts are searched for the variable names above, to find profiles, and nothing else is taken from them.
 
 Prompts and replies are never stored, printed or sent. The archive holds timestamps, token counts, model names, tool names and project folder names.
@@ -172,6 +174,16 @@ PORT=8787 node server/percentiles.js
 ```
 
 It keeps one row per install per year and shows ranks once 20 wraps exist (`MIN_WRAPS`). It stores no IP addresses.
+
+## Share server
+
+`share/` is the Cloudflare Worker behind share.aiyearwrapped.com. It turns a friend code into the link preview: a page with the card as its image, which sends people on to the site.
+
+```bash
+cd share && npm install && npx wrangler dev
+```
+
+`npx wrangler deploy` publishes it, from the Cloudflare account that holds aiyearwrapped.com.
 
 ## Adding a tool
 

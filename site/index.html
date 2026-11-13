@@ -136,16 +136,20 @@
   big.textContent = year;
   big.dataset.text = year;
 
+  // A shared card links here with its friend code, so the command compares with whoever shared it.
+  const code = (location.hash.match(/^#vs=(aw1-[0-9a-z]+(?:\.[0-9a-z]+){6})$/i) || [])[1];
+  const vs = code ? ` --vs ${code.toLowerCase()}` : '';
   const cmd = document.getElementById('cmd');
   const needs = document.getElementById('needs');
   const ways = document.querySelectorAll('.ways button');
-  for (const way of ways) {
-    way.addEventListener('click', () => {
-      for (const w of ways) w.setAttribute('aria-pressed', String(w === way));
-      cmd.textContent = way.dataset.cmd;
-      needs.textContent = way.dataset.needs;
-    });
-  }
+  const pick = (way) => {
+    for (const w of ways) w.setAttribute('aria-pressed', String(w === way));
+    const install = way.dataset.cmd.startsWith('brew ');
+    cmd.textContent = way.dataset.cmd + (install ? '' : vs);
+    needs.textContent = install ? way.dataset.needs.replace('run ai-wrapped-year', `run ai-wrapped-year${vs}`) : way.dataset.needs;
+  };
+  for (const way of ways) way.addEventListener('click', () => pick(way));
+  if (vs) pick(ways[0]);
 
   const copy = document.getElementById('copy');
   const said = document.getElementById('said');

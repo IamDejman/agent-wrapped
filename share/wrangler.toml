@@ -1,0 +1,11 @@
+name = "ai-wrapped-year-share"
+main = "worker.js"
+compatibility_date = "2026-11-01"
+# Only the custom domain, so every link and card goes through its cache.
+workers_dev = false
+routes = [{ pattern = "share.aiyearwrapped.com", custom_domain = true }]
+
+[[rules]]
+type = "Data"
+globs = ["**/*.ttf"]
+fallthrough = true

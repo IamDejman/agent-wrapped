@@ -364,7 +364,7 @@
   // The image made ahead keeps the tap's permission to share, which waiting for toBlob can lose on iPhone.
   function shareCard(canvas, png) {
     const send = (blob) => {
-      navigator.share({ files: [new File([blob], cardName, { type: 'image/png' })], text: `${POST} ${HOMEPAGE}` }).catch((err) => {
+      navigator.share({ files: [new File([blob], cardName, { type: 'image/png' })], text: `${POST} ${LINK}` }).catch((err) => {
         if (err.name !== 'AbortError') saveCard(canvas); // closing the share sheet is not a failure
       });
     };
@@ -418,17 +418,20 @@
   // through the share sheet; elsewhere it goes to the clipboard to be pasted in.
   const apple = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
   const touch = matchMedia('(pointer: coarse)').matches;
-  const HOMEPAGE = 'https://aiyearwrapped.com/';
-  const POST = `My ${D.year} with AI: ${D.persona.title}. ${num(T.prompts)} prompts, ${short(T.tokens.total)} tokens. Compare with me: npx ai-wrapped-year --vs ${myCode}`;
+  // The link's preview is this card, drawn by share.aiyearwrapped.com from the code alone, and it opens
+  // the site with the compare command filled in.
+  const LINK = `https://share.aiyearwrapped.com/${myCode}`;
+  const SUMMARY = `My ${D.year} with AI: ${D.persona.title}. ${num(T.prompts)} prompts, ${short(T.tokens.total)} tokens.`;
+  const POST = `${SUMMARY} Compare with me:`;
   const APPS = (() => {
     const q = encodeURIComponent;
     return [
-      ['X', `https://x.com/intent/tweet?text=${q(POST)}&url=${q(HOMEPAGE)}`],
-      ['LinkedIn', `https://www.linkedin.com/sharing/share-offsite/?url=${q(HOMEPAGE)}`],
-      ['Facebook', `https://www.facebook.com/sharer/sharer.php?u=${q(HOMEPAGE)}`],
-      ['WhatsApp', `https://wa.me/?text=${q(`${POST} ${HOMEPAGE}`)}`],
-      ['Reddit', `https://www.reddit.com/submit?url=${q(HOMEPAGE)}&title=${q(POST)}`],
-      apple && ['Messages', `sms:&body=${q(`${POST} ${HOMEPAGE}`)}`],
+      ['X', `https://x.com/intent/tweet?text=${q(POST)}&url=${q(LINK)}`],
+      ['LinkedIn', `https://www.linkedin.com/sharing/share-offsite/?url=${q(LINK)}`],
+      ['Facebook', `https://www.facebook.com/sharer/sharer.php?u=${q(LINK)}`],
+      ['WhatsApp', `https://wa.me/?text=${q(`${POST} ${LINK}`)}`],
+      ['Reddit', `https://www.reddit.com/submit?url=${q(LINK)}&title=${q(SUMMARY)}`],
+      apple && ['Messages', `sms:&body=${q(`${POST} ${LINK}`)}`],
       ['Instagram', 'https://www.instagram.com/'],
       ['Discord', 'https://discord.com/channels/@me'],
     ].filter(Boolean);
