@@ -8,5 +8,6 @@ export const TOOL_NAMES = {
   gemini: 'Gemini CLI',
   opencode: 'opencode',
   copilot: 'Copilot',
+  amp: 'Amp',
   api: 'API',
 };
