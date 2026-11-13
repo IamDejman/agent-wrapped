@@ -8,14 +8,15 @@ npx ai-wrapped-year
 
 Needs Node 22.13 or newer. No dependencies.
 
-With pnpm or Bun:
+With pnpm, Bun or Deno:
 
 ```bash
 pnpm dlx ai-wrapped-year
 bunx --bun ai-wrapped-year
+deno run -A npm:ai-wrapped-year
 ```
 
-The Bun command runs on Bun alone, without Node.
+The Bun and Deno commands run without Node. Deno needs 2.2 or newer.
 
 No Node? On a Mac or Linux, Homebrew installs it for you:
 
