@@ -31,6 +31,7 @@ Usage: npx ai-wrapped-year [options]
   --github             Add your GitHub activity, through the gh CLI you are signed in to
   --compare            Rank your totals against other wraps (sends five totals to --api)
   --api <url>          Percentile server for --compare (or set AGENT_WRAPPED_API)
+  --vs <code>          Compare with a friend's code, from their page (name=code to name them)
   --export <file>      Save this machine's history to one file
   --import <file>      Merge a file made by --export on another machine
   --doctor             Show what was found for each tool, and the layout of tools not read yet
@@ -60,6 +61,7 @@ try {
       github: { type: 'boolean' },
       compare: { type: 'boolean' },
       api: { type: 'string' },
+      vs: { type: 'string', multiple: true },
       export: { type: 'string' },
       import: { type: 'string', multiple: true },
       doctor: { type: 'boolean' },
@@ -89,6 +91,15 @@ const year = args.year ? Number(args.year) : now.getFullYear() - (now.getMonth()
 if (!Number.isInteger(year)) fail(`--year must be a number, got "${args.year}"`, 2);
 const paidPerMonth = args.paid === undefined ? 0 : Number(args.paid);
 if (!(paidPerMonth >= 0)) fail(`--paid must be a monthly price in dollars, got "${args.paid}"`, 2);
+let friends;
+if (args.vs) {
+  const { friendCodes } = await import('../src/compare.js');
+  try {
+    friends = friendCodes(args.vs);
+  } catch (err) {
+    fail(err.message, 2);
+  }
+}
 
 const started = Date.now();
 const found = [];
@@ -162,6 +173,8 @@ if (args.data) {
 } else {
   data = await readLogs();
 }
+
+if (friends) data.friends = friends;
 
 if (args.github) {
   try {

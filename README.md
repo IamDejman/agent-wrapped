@@ -81,6 +81,16 @@ npx ai-wrapped-year --github
 
 Adds commits, pull requests, reviews and active days for the year, through the `gh` CLI you are already signed in to.
 
+## Compare with friends
+
+The second-to-last slide shows your friend code. Send it to a friend, and paste theirs into the slide to see your totals side by side. The share buttons put your code in the post. A friend can also run:
+
+```bash
+npx ai-wrapped-year --vs sam=aw1-1ka.1.3e8.1kqsbm8.2s.e.9ix
+```
+
+A code holds the year, your persona and five totals: prompts, tokens, hours, streak and cost. Nothing else.
+
 ## Options
 
 | Option | What it does |
@@ -92,6 +102,7 @@ Adds commits, pull requests, reviews and active days for the year, through the `
 | `--github` | Add your GitHub activity |
 | `--compare` | Rank your totals against other wraps |
 | `--api <url>` | Percentile server for `--compare` (or set `AGENT_WRAPPED_API`) |
+| `--vs <code>` | Compare with a friend's code. `name=code` names them. Repeat for more friends |
 | `--export <file>` | Save this machine's history to one file |
 | `--import <file>` | Merge a file made by `--export` |
 | `--doctor` | Show what was found for each tool |

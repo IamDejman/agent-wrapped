@@ -40,3 +40,16 @@ export async function compare(url, data) {
   const body = await res.json();
   return { n: Number(body.n) || 0, top: body.top ?? null };
 }
+
+/** A friend code as the page shows it: aw1- then seven base-36 numbers. Matched anywhere in what was pasted. */
+export const FRIEND_CODE = /aw1-[0-9a-z]+(?:\.[0-9a-z]+){6}/i;
+
+/** --vs values, each a code or name=code, for the page to compare with. Only the page reads the numbers in them. */
+export function friendCodes(values) {
+  return values.map((value, i) => {
+    const eq = value.indexOf('=');
+    const code = (eq > 0 ? value.slice(eq + 1) : value).match(FRIEND_CODE)?.[0];
+    if (!code) throw new Error(`--vs: "${value}" is not a friend code. Codes start with aw1- and are on the Compare slide of a wrap.`);
+    return { name: (eq > 0 ? value.slice(0, eq).trim().slice(0, 24) : '') || `Friend ${i + 1}`, code: code.toLowerCase() };
+  });
+}
