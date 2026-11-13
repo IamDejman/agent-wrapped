@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2438e8">
+<title>Agent Wrapped</title>
+<style>
+  /* No network requests: system typefaces only, so the page works offline and nothing leaves the machine. */
+  :root {
+    --blue: #2438e8;
+    --pink: #ff5c93;
+    --yellow: #ffd23f;
+    --paper: #f6f1e7;
+    --display: "Avenir Next Condensed", "Barlow Condensed", "Roboto Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+    --text: "Avenir Next", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body { display: grid; place-items: center; background: #000; font-family: var(--text); overflow: hidden; }
+
+  .stage {
+    position: relative;
+    height: min(100dvh, 900px);
+    aspect-ratio: 9 / 16;
+    container-type: size;
+    isolation: isolate;
+    overflow: hidden;
+    background: var(--field);
+    color: var(--ink);
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  @media (max-aspect-ratio: 9/16) {
+    .stage { width: 100vw; height: 100dvh; aspect-ratio: auto; }
+  }
+
+  .progress { position: absolute; inset: calc(4cqw + env(safe-area-inset-top)) 8cqw auto; z-index: 2; display: flex; gap: 1cqw; padding: 0; list-style: none; }
+  .progress li { flex: 1; height: 0.9cqw; background: color-mix(in srgb, var(--ink) 28%, transparent); }
+  .progress li i { display: block; height: 100%; background: var(--ink); transform: scaleX(0); transform-origin: left; }
+  .progress li.done i, .progress li.on i { transform: none; }
+  /* Stories play on their own; the bar of the slide on screen is the timer. */
+  @media (prefers-reduced-motion: no-preference) {
+    .auto .progress li.on i { animation: fill 7s linear; }
+    .paused .progress li.on i, .hold .progress li.on i, .away .progress li.on i { animation-play-state: paused; }
+    @keyframes fill { from { transform: scaleX(0); } }
+  }
+
+  .pause { position: absolute; top: calc(5.5cqw + env(safe-area-inset-top)); right: 6cqw; z-index: 2; width: 9cqw; height: 9cqw; padding: 2cqw; border: 0; background: none; color: var(--ink); cursor: pointer; touch-action: manipulation; }
+  .pause svg { display: block; width: 100%; height: 100%; fill: currentColor; }
+  .pause:hover { color: var(--over); }
+  .pause:focus-visible { outline: 0.8cqw solid var(--over); }
+
+  .nav { position: absolute; top: 0; bottom: 0; z-index: 0; padding: 0; border: 0; background: none; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  .prev { left: 0; width: 30%; }
+  .next { right: 0; width: 70%; }
+  .nav:focus-visible { outline: 0.8cqw solid var(--over); outline-offset: -2cqw; }
+
+  /* The slide sits above the tap zones but lets clicks fall through to them. */
+  .slide { position: absolute; inset: 0; z-index: 1; display: flex; flex-direction: column; padding: calc(14cqw + env(safe-area-inset-top)) 8cqw calc(9cqw + env(safe-area-inset-bottom)); pointer-events: none; }
+  .slide button { pointer-events: auto; }
+
+  .lead, .unit { font-size: 7cqw; font-weight: 600; line-height: 1.15; text-wrap: balance; }
+
+  /* The one loud thing: numerals printed twice, slightly out of register, like a two-colour riso print. */
+  .big { align-self: flex-start; margin: 3cqw 0 2.5cqw; font-family: var(--display); font-weight: 900; line-height: 0.86; letter-spacing: -0.01em; white-space: nowrap; }
+  .big span { position: relative; display: block; width: max-content; }
+  .big span::after {
+    content: attr(data-text);
+    content: attr(data-text) / "";
+    position: absolute;
+    inset: 0;
+    color: var(--over);
+    mix-blend-mode: var(--blend);
+    transform: translate(0.05em, 0.04em);
+  }
+  .big.wrap { white-space: normal; overflow-wrap: anywhere; line-height: 0.95; }
+  .big.wrap span { width: auto; }
+  @media (prefers-reduced-motion: no-preference) {
+    .big span::after { animation: register 0.45s cubic-bezier(0.2, 0.8, 0.2, 1); }
+    @keyframes register { from { transform: none; } }
+  }
+
+  .facts { display: grid; gap: 1.5cqw; margin-top: auto; font-size: 5cqw; font-weight: 500; line-height: 1.3; text-wrap: pretty; }
+
+  .rows { margin-top: 5cqw; padding: 0; list-style: none; font-size: 4.6cqw; font-weight: 600; }
+  .rows li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 4cqw; padding: 2.2cqw 0; border-top: 0.5cqw solid currentColor; }
+  .rows li span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rows li span:last-child { font-variant-numeric: tabular-nums; }
+  .rows .meter { grid-column: 1 / -1; width: max(var(--w), 0.8cqw); height: 3cqw; margin-top: 1.6cqw; background: currentColor; }
+  /* A slide with more on it than fits gives up its meters before anything is cut off. */
+  .tight .meter { display: none; }
+  .tight .rows { margin-top: 3cqw; }
+  .tight .rows li { padding: 1.6cqw 0; }
+
+  .hours { display: flex; align-items: flex-end; gap: 0.8cqw; height: 34cqw; margin-top: 5cqw; }
+  .hours i { flex: 1; min-height: 0.5cqw; background: currentColor; }
+  .hours i.peak { background: var(--over); }
+  .ticks { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 1.5cqw; font-size: 3.6cqw; font-weight: 600; }
+  .months { gap: 2cqw; height: 24cqw; }
+  .months + .ticks { grid-template-columns: repeat(var(--n), 1fr); gap: 2cqw; text-align: center; }
+
+  .heat { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; grid-template-rows: repeat(7, auto); gap: 0.6cqw; margin-top: 5cqw; }
+  .heat i { aspect-ratio: 1; background: currentColor; opacity: var(--o); }
+
+  .card { align-self: center; height: 100cqw; aspect-ratio: 9 / 16; margin-top: 5cqw; }
+  .actions { display: flex; gap: 3cqw; align-self: center; margin-top: 6cqw; }
+  .save { padding: 3.2cqw 8cqw; border: 0; background: var(--ink); color: var(--field); font: 700 5cqw var(--text); cursor: pointer; touch-action: manipulation; }
+  .save + .save { background: none; color: var(--ink); box-shadow: inset 0 0 0 0.6cqw var(--ink); }
+  .save:hover { background: var(--over); color: var(--field); box-shadow: none; }
+  .save:focus-visible { outline: 0.8cqw solid var(--over); outline-offset: 0.8cqw; }
+</style>
+</head>
+<body>
+<main class="stage" id="stage">
+  <ol class="progress" id="progress" aria-hidden="true"></ol>
+  <button class="pause" id="pause" type="button" aria-label="Pause" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg></button>
+  <button class="nav prev" id="prev" aria-label="Previous"></button>
+  <button class="nav next" id="next" aria-label="Next"></button>
+  <section class="slide" id="slide" aria-live="polite"></section>
+</main>
+
+<script id="data" type="application/json">__WRAP_DATA__</script>
+<script>
+  const D = JSON.parse(document.getElementById('data').textContent);
+  const T = D.totals;
+  document.title = `Agent Wrapped ${D.year}`;
+
+  const SCHEMES = {
+    blue: { field: '#2438e8', ink: '#f6f1e7', over: '#ff5c93', blend: 'screen' },
+    yellow: { field: '#ffd23f', ink: '#2438e8', over: '#ff5c93', blend: 'multiply' },
+    pink: { field: '#ff5c93', ink: '#000000', over: '#ffd23f', blend: 'multiply' },
+    black: { field: '#000000', ink: '#ffd23f', over: '#ff5c93', blend: 'screen' },
+  };
+
+  // --- formatting -----------------------------------------------------------
+  const num = (n) => Math.round(n).toLocaleString('en');
+  const trim = (x) => (x >= 100 ? String(Math.round(x)) : x.toFixed(1).replace(/\.0$/, ''));
+  const short = (n) => (n >= 1e9 ? `${trim(n / 1e9)}B` : n >= 1e6 ? `${trim(n / 1e6)}M` : n >= 1e4 ? `${trim(n / 1e3)}K` : num(n));
+  const plural = (n, word) => `${num(n)} ${word}${Math.round(n) === 1 ? '' : 's'}`;
+  const pct = (x) => (x > 0 && x < 0.01 ? '<1%' : `${Math.round(x * 100)}%`);
+  const hour = (h) => `${h % 12 || 12}${h < 12 ? 'am' : 'pm'}`;
+  const toDate = (key) => {
+    const [y, m, d] = key.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  };
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const date = (key) => `${Number(key.slice(8))} ${MONTHS[Number(key.slice(5, 7)) - 1]}`;
+  const duration = (ms) => {
+    const mins = Math.round(ms / 60000);
+    return mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`;
+  };
+  const money = (n) => (n >= 1e6 ? `$${trim(n / 1e6)}M` : n >= 1e4 ? `$${trim(n / 1e3)}K` : `$${num(n)}`);
+
+  // --- elements -------------------------------------------------------------
+  const el = (tag, props = {}, ...kids) => {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(props)) {
+      if (k === 'class') e.className = v;
+      else if (k === 'style') e.style.cssText = v;
+      else e.setAttribute(k, v);
+    }
+    e.append(...kids.flat().filter((k) => k !== null && k !== undefined && k !== false));
+    return e;
+  };
+  const lead = (text) => el('h1', { class: 'lead' }, text);
+  const unit = (text) => el('p', { class: 'unit' }, text);
+  const facts = (...lines) => el('div', { class: 'facts' }, lines.filter(Boolean).map((l) => el('p', {}, l)));
+  // Long multi-word values stack one word per line so they can stay large.
+  const big = (text) => {
+    const lines = text.length > 9 && text.includes(' ') ? text.split(' ') : [text];
+    return el('div', { class: 'big' }, lines.map((l) => el('span', { 'data-text': l }, l)));
+  };
+  // A number that counts up to its value when the slide appears.
+  const counted = (value, format) => {
+    const node = big(format(value));
+    node.firstChild.count = { value, format };
+    return node;
+  };
+  const rows = (items) =>
+    el('ul', { class: 'rows' }, items.map(([name, value, share]) =>
+      el('li', {}, el('span', {}, name), el('span', {}, value), share !== undefined && el('div', { class: 'meter', style: `--w:${share * 100}%` }))));
+
+  function hoursChart() {
+    const max = Math.max(...D.hours);
+    const peak = D.hours.indexOf(max);
+    return [
+      el('div', { class: 'hours', role: 'img', 'aria-label': `Prompts by hour of day, peaking at ${hour(peak)}` },
+        D.hours.map((n, h) => el('i', { class: h === peak ? 'peak' : '', style: `height:${(n / max) * 100}%` }))),
+      el('div', { class: 'ticks', 'aria-hidden': 'true' }, ['12am', '6am', '12pm', '6pm'].map((t) => el('span', {}, t))),
+    ];
+  }
+
+  function monthsChart() {
+    const months = D.months ?? [];
+    if (months.length < 2) return null;
+    const max = Math.max(...months.map((m) => m.tokens));
+    const peak = months.findIndex((m) => m.tokens === max);
+    const name = (m) => MONTHS[Number(m.month.slice(5)) - 1];
+    return [
+      el('div', { class: 'hours months', role: 'img', 'aria-label': `Tokens by month, peaking in ${name(months[peak])}` },
+        months.map((m, i) => el('i', { class: i === peak ? 'peak' : '', style: `height:${(m.tokens / max) * 100}%` }))),
+      el('div', { class: 'ticks', style: `--n:${months.length}`, 'aria-hidden': 'true' }, months.map((m) => el('span', {}, months.length > 8 ? name(m)[0] : name(m)))),
+    ];
+  }
+
+  function heatmap() {
+    const max = Math.max(...Object.values(D.days));
+    const start = toDate(D.from);
+    start.setDate(start.getDate() - start.getDay());
+    const end = toDate(D.to);
+    const cells = [];
+    for (const d = start; d <= end; d.setDate(d.getDate() + 1)) {
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const n = D.days[key] || 0;
+      cells.push(el('i', { style: `--o:${n ? 0.35 + 0.65 * Math.sqrt(n / max) : 0.12}` }));
+    }
+    return el('div', { class: 'heat', role: 'img', 'aria-label': `Prompts per day from ${date(D.from)} to ${date(D.to)}` }, cells);
+  }
+
+  // --- share card -----------------------------------------------------------
+  function drawCard(canvas) {
+    const W = 1080, H = 1920, X = 96;
+    canvas.width = W;
+    canvas.height = H;
+    const g = canvas.getContext('2d');
+    const css = getComputedStyle(document.documentElement);
+    const display = css.getPropertyValue('--display');
+    const text = css.getPropertyValue('--text');
+    const { blue, paper, yellow, pink } = { blue: '#2438e8', paper: '#f6f1e7', yellow: '#ffd23f', pink: '#ff5c93' };
+    const fitSize = (str, max, width) => {
+      g.font = `900 ${max}px ${display}`;
+      return Math.min(max, (max * width) / g.measureText(str).width);
+    };
+    const overprint = (str, x, y, size, ink) => {
+      g.font = `900 ${size}px ${display}`;
+      g.fillStyle = ink;
+      g.fillText(str, x, y);
+      g.globalCompositeOperation = 'screen';
+      g.fillStyle = pink;
+      g.fillText(str, x + size * 0.05, y + size * 0.04);
+      g.globalCompositeOperation = 'source-over';
+    };
+
+    g.fillStyle = blue;
+    g.fillRect(0, 0, W, H);
+    g.fillStyle = paper;
+    g.font = `600 60px ${text}`;
+    g.fillText(`My ${D.year} with AI`, X, 190);
+
+    const words = D.persona.title.split(' ');
+    const size = Math.min(...words.map((w) => fitSize(w, 330, W - 2 * X)));
+    let y = 250;
+    for (const w of words) {
+      y += size * 0.88;
+      overprint(w, X, y, size, paper);
+    }
+
+    const stats = [
+      [num(T.prompts), 'prompts'],
+      [short(T.tokens.total), 'tokens'],
+      [String(D.streak.days), 'day streak'],
+      D.cost?.total >= 1 ? [money(D.cost.total), 'at API prices'] : [D.models[0]?.name ?? '-', 'top model'],
+    ];
+    const top = Math.max(y + 150, 1010);
+    const col = (W - 2 * X) / 2;
+    stats.forEach(([value, label], i) => {
+      const sx = X + (i % 2) * col;
+      const sy = top + Math.floor(i / 2) * 310;
+      g.fillStyle = paper;
+      g.fillRect(sx, sy, col - 40, 6);
+      g.fillStyle = yellow;
+      g.font = `900 ${fitSize(value, 150, col - 50)}px ${display}`;
+      g.fillText(value, sx, sy + 165);
+      g.fillStyle = paper;
+      g.font = `600 44px ${text}`;
+      g.fillText(label, sx, sy + 230);
+    });
+
+    g.fillStyle = paper;
+    g.font = `600 44px ${text}`;
+    const names = D.tools.map((t) => t.name);
+    g.fillText(names.length > 4 ? `${names.slice(0, 4).join(', ')} +${names.length - 4}` : names.join(', '), X, H - 180, W - 2 * X);
+    g.font = `700 44px ${text}`;
+    g.fillStyle = yellow;
+    g.fillText('npx agent-wrapped', X, H - 110);
+  }
+
+  const cardName = `agent-wrapped-${D.year}.png`;
+  function saveCard(canvas) {
+    canvas.toBlob((blob) => {
+      const a = el('a', { href: URL.createObjectURL(blob), download: cardName });
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }, 'image/png');
+  }
+
+  // Phones can hand the image straight to another app; elsewhere there is only Save.
+  const canShare = (() => {
+    try {
+      return Boolean(navigator.canShare?.({ files: [new File([''], cardName, { type: 'image/png' })] }));
+    } catch {
+      return false;
+    }
+  })();
+  function shareCard(canvas) {
+    canvas.toBlob((blob) => {
+      navigator.share({ files: [new File([blob], cardName, { type: 'image/png' })] }).catch((err) => {
+        if (err.name !== 'AbortError') saveCard(canvas); // closing the share sheet is not a failure
+      });
+    }, 'image/png');
+  }
+
+  // --- slides ---------------------------------------------------------------
+  const peakHour = D.hours.indexOf(Math.max(...D.hours));
+  const nightPrompts = D.hours.slice(0, 5).reduce((a, b) => a + b, 0);
+  const novels = Math.round((T.tokens.out * 0.75) / 90000);
+  const readingYears = Math.round((T.tokens.total * 0.75) / 250 / 60 / 24 / 365); // words at 250 a minute
+  const activeHours = Math.round(T.activeMs / 3.6e6);
+  const workDays = Math.round(activeHours / 8);
+  const thinkHours = Math.round(T.thinkMs / 3.6e6);
+  const replies = D.models.reduce((n, m) => n + m.replies, 0);
+  const G = D.github;
+  // The ranking you did best in, when --compare returned one.
+  const rank = Object.entries(D.rank?.top ?? {}).filter(([, p]) => p > 0).sort((a, b) => a[1] - b[1])[0];
+  const RANKED = { prompts: 'prompts', tokens: 'tokens', hours: 'hours', streak: 'streak', cost: 'usage value' };
+
+  const slides = [
+    () => [
+      lead('Your'),
+      big(String(D.year)),
+      unit('with AI'),
+      facts(`${date(D.from)} to ${date(D.to)}`, D.tools.map((t) => t.name).join(', ')),
+    ],
+    () => [
+      lead('You sent'),
+      counted(T.prompts, num),
+      unit(T.prompts === 1 ? 'prompt' : 'prompts'),
+      facts(`${plural(T.sessions, 'session')} across ${plural(T.activeDays, 'day')}`, activeHours >= 1 && `${plural(activeHours, 'hour')} with an agent at work${workDays >= 2 ? `, ${plural(workDays, 'working day')}` : ''}`),
+    ],
+    T.tokens.total > 0 && (() => [
+      lead('You went through'),
+      counted(T.tokens.total, short),
+      unit('tokens'),
+      monthsChart(),
+      facts(
+        readingYears >= 1 && `${plural(readingYears, 'year')} of nonstop reading`,
+        novels >= 1 ? `${short(T.tokens.out)} were written for you, about ${plural(novels, 'novel')}` : `${short(T.tokens.out)} were written for you`,
+      ),
+    ]),
+    D.cost?.total >= 1 && (() => [
+      lead('At API list prices, worth'),
+      counted(D.cost.total, money),
+      rows(D.cost.models.map((m) => [m.name, money(m.usd), m.usd / D.cost.total])),
+      facts(
+        D.cost.saved >= 1 && `Without prompt caching: ${money(D.cost.total + D.cost.saved)}`,
+        D.cost.topDay && `Priciest day: ${date(D.cost.topDay.date)}, ${money(D.cost.topDay.usd)}`,
+        D.cost.paid > 0 && D.cost.total > D.cost.paid && `${trim(D.cost.total / D.cost.paid)}x the ${money(D.cost.paid)} you paid`,
+      ),
+    ]),
+    D.tools.length > 1 && (() => [
+      lead('Most of it went to'),
+      big(D.tools[0].name),
+      // A tool with no prompts is imported usage, which only has tokens.
+      rows(D.tools.map((t) => [t.name, t.prompts ? pct(t.prompts / T.prompts) : `${short(t.tokens)} tokens`, T.prompts ? t.prompts / T.prompts : 0])),
+    ]),
+    D.models.length > 0 && (() => [
+      lead('Your most-used model'),
+      big(D.models[0].name),
+      unit(`${pct(D.models[0].replies / replies)} of replies`),
+      rows(D.models.slice(1).map((m) => [m.name, pct(m.replies / replies)])),
+    ]),
+    () => [
+      lead('Your busiest hour'),
+      big(hour(peakHour)),
+      hoursChart(),
+      facts(nightPrompts > 0 && `${plural(nightPrompts, 'prompt')} sent between midnight and 5am`),
+    ],
+    () => [
+      lead('Your longest streak'),
+      big(plural(D.streak.days, 'day')),
+      unit(D.streak.days > 1 ? `${date(D.streak.from)} to ${date(D.streak.to)}` : date(D.streak.from)),
+      heatmap(),
+      facts(
+        D.busiest && `Busiest day: ${date(D.busiest.date)}, ${plural(D.busiest.prompts, 'prompt')}`,
+        D.longestRun && `Longest unbroken run: ${duration(D.longestRun.ms)}`,
+      ),
+    ],
+    D.projects.length > 0 && (() => [
+      lead('Your top project'),
+      big(D.projects[0].name),
+      unit(plural(D.projects[0].prompts, 'prompt')),
+      rows(D.projects.slice(1).map((p) => [p.name, num(p.prompts)])),
+      facts(D.projectCount > D.projects.length && `${plural(D.projectCount, 'project')} in total`),
+    ]),
+    D.actions?.length > 0 && (() => [
+      lead('Your agents mostly'),
+      big(D.actions[0].name),
+      unit(plural(D.actions[0].count, 'time')),
+      rows(D.actions.slice(1).map((a) => [a.name, num(a.count)])),
+      facts(thinkHours >= 1 && `${plural(thinkHours, 'hour')} spent thinking`),
+    ]),
+    G?.total > 0 && (() => [
+      lead('On GitHub you made'),
+      counted(G.commits || G.total, num),
+      unit(G.commits ? (G.commits === 1 ? 'commit' : 'commits') : 'contributions'),
+      rows([['Pull requests', num(G.prs)], ['Reviews', num(G.reviews)], ['Issues', num(G.issues)], ['Repositories', num(G.repos)]].filter(([, n]) => n !== '0')),
+      facts(
+        G.withAi > 0 && `${num(G.withAi)} of your ${plural(G.activeDays, 'GitHub day')} had an agent at work too`,
+        G.busiest && `Busiest day: ${date(G.busiest.date)}, ${plural(G.busiest.count, 'contribution')}`,
+      ),
+    ]),
+    () => [
+      lead('That makes you'),
+      big(D.persona.title),
+      facts(D.persona.line, rank && `Top ${rank[1]}% for ${RANKED[rank[0]] ?? rank[0]} among ${plural(D.rank.n, 'wrap')}`),
+    ],
+    () => {
+      const canvas = el('canvas', { class: 'card', role: 'img', 'aria-label': `Share card: ${D.persona.title}, ${num(T.prompts)} prompts, ${short(T.tokens.total)} tokens` });
+      drawCard(canvas);
+      const button = (label, run) => {
+        const b = el('button', { class: 'save', type: 'button' }, label);
+        b.addEventListener('click', () => run(canvas));
+        return b;
+      };
+      return [lead('Your year on one card'), canvas, el('div', { class: 'actions' }, canShare && button('Share', shareCard), button('Save image', saveCard))];
+    },
+  ].filter(Boolean);
+
+  // --- stage ----------------------------------------------------------------
+  const stage = document.getElementById('stage');
+  const slide = document.getElementById('slide');
+  const progress = document.getElementById('progress');
+  const order = ['blue', 'yellow', 'pink', 'black'];
+  const schemeAt = (i) => (i === slides.length - 1 ? 'black' : order[i % order.length]);
+  const motion = matchMedia('(prefers-reduced-motion: no-preference)').matches;
+  const pause = document.getElementById('pause');
+  let index = 0;
+
+  progress.append(...slides.map(() => el('li', {}, el('i'))));
+
+  function fit() {
+    const w = stage.clientWidth;
+    const avail = w * 0.84;
+    for (const b of slide.querySelectorAll('.big')) {
+      b.classList.remove('wrap');
+      const max = w * 0.4;
+      b.style.fontSize = `${max}px`;
+      const width = b.scrollWidth;
+      if (width <= avail) continue;
+      const size = (max * avail) / width;
+      const min = w * 0.12;
+      b.style.fontSize = `${Math.max(size, min)}px`;
+      if (size < min) b.classList.add('wrap');
+    }
+    slide.classList.remove('tight');
+    slide.classList.toggle('tight', slide.scrollHeight > slide.clientHeight + 1);
+  }
+
+  function countUp(span) {
+    const { value, format } = span.count;
+    const t0 = performance.now();
+    slide.setAttribute('aria-busy', 'true'); // screen readers hear the final number, not every frame
+    const step = (t) => {
+      const p = Math.min(1, (t - t0) / 800);
+      const text = format(value * (1 - (1 - p) ** 3));
+      span.textContent = text;
+      span.dataset.text = text;
+      if (p < 1 && span.isConnected) requestAnimationFrame(step);
+      else slide.removeAttribute('aria-busy');
+    };
+    requestAnimationFrame(step);
+  }
+
+  function setPaused(paused) {
+    stage.classList.toggle('paused', paused);
+    pause.setAttribute('aria-label', paused ? 'Play' : 'Pause');
+    pause.firstChild.firstChild.setAttribute('d', paused ? 'M7 4l13 8-13 8z' : 'M6 4h4v16H6zM14 4h4v16h-4z');
+  }
+
+  function show(i) {
+    index = Math.max(0, Math.min(slides.length - 1, i));
+    const s = SCHEMES[schemeAt(index)];
+    for (const [k, v] of Object.entries(s)) stage.style.setProperty(`--${k}`, v);
+    document.querySelector('meta[name="theme-color"]').content = s.field;
+    slide.replaceChildren(...slides[index]().flat().filter(Boolean));
+    slide.setAttribute('aria-label', `Slide ${index + 1} of ${slides.length}`);
+    [...progress.children].forEach((li, n) => {
+      li.classList.toggle('done', n < index);
+      li.classList.toggle('on', n === index);
+    });
+    const last = index === slides.length - 1;
+    stage.classList.toggle('auto', !last);
+    pause.hidden = !motion || last;
+    history.replaceState(null, '', `#${index + 1}`);
+    fit();
+    if (motion) for (const span of slide.querySelectorAll('.big span')) if (span.count) countUp(span);
+  }
+
+  // Holding a finger down pauses, like any stories player; the tap that ends a hold doesn't navigate.
+  let downAt = 0;
+  let held = false;
+  const release = () => stage.classList.remove('hold');
+  stage.addEventListener('pointerdown', (e) => {
+    held = false;
+    if (!e.target.closest('.nav')) return;
+    downAt = performance.now();
+    stage.classList.add('hold');
+  });
+  stage.addEventListener('pointerup', () => {
+    held = stage.classList.contains('hold') && performance.now() - downAt > 350;
+    release();
+  });
+  stage.addEventListener('pointercancel', release);
+  stage.addEventListener('pointerleave', release);
+  const go = (step) => () => {
+    if (held) held = false;
+    else show(index + step);
+  };
+  document.getElementById('prev').addEventListener('click', go(-1));
+  document.getElementById('next').addEventListener('click', go(1));
+  pause.addEventListener('click', () => setPaused(!stage.classList.contains('paused')));
+  progress.addEventListener('animationend', () => show(index + 1));
+  // Someone tabbing through the page is reading at their own pace.
+  stage.addEventListener('focusin', (e) => e.target !== pause && e.target.matches(':focus-visible') && setPaused(true));
+  document.addEventListener('visibilitychange', () => stage.classList.toggle('away', document.hidden));
+  addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(index + 1);
+    if (e.key === 'ArrowLeft') show(index - 1);
+    if (e.key === ' ' && !e.target.closest('button')) {
+      e.preventDefault();
+      setPaused(!stage.classList.contains('paused'));
+    }
+  });
+  addEventListener('resize', fit);
+  show((parseInt(location.hash.slice(1), 10) || 1) - 1);
+</script>
+</body>
+</html>
