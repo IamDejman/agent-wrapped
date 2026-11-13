@@ -492,7 +492,10 @@
     const last = index === slides.length - 1;
     stage.classList.toggle('auto', !last);
     pause.hidden = !motion || last;
-    history.replaceState(null, '', `#${index + 1}`);
+    // Previews that embed the page (srcdoc frames) refuse URL changes; the slide still has to show.
+    try {
+      history.replaceState(null, '', `#${index + 1}`);
+    } catch {}
     fit();
     if (motion) for (const span of slide.querySelectorAll('.big span')) if (span.count) countUp(span);
   }
