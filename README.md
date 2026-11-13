@@ -8,6 +8,8 @@ npx ai-wrapped-year
 
 Needs Node 22.13 or newer. No dependencies.
 
+See a demo wrap at [iamdejman.github.io/ai-wrapped-year](https://iamdejman.github.io/ai-wrapped-year/).
+
 ## What you get
 
 A page of slides, like a music app's year in review: prompts, tokens, hours, your longest streak, busiest day, top projects, models, what it would have cost at list prices, what caching saved, and a persona. The last slide saves a 1080x1920 image for sharing.
