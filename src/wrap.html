@@ -642,6 +642,8 @@
   const schemeAt = (i) => (i === slides.length - 1 ? 'black' : order[i % order.length]);
   const motion = matchMedia('(prefers-reduced-motion: no-preference)').matches;
   const pause = document.getElementById('pause');
+  // The site's demo (?loop) starts over after the last slide, until someone clicks it.
+  const loop = new URLSearchParams(location.search).has('loop');
   let index = 0;
 
   progress.append(...slides.map(() => el('li', {}, el('i'))));
@@ -702,9 +704,9 @@
       li.classList.toggle('done', n < index);
       li.classList.toggle('on', n === index);
     });
-    const last = index === slides.length - 1;
-    stage.classList.toggle('auto', !last);
-    pause.hidden = !motion || last;
+    const stops = index === slides.length - 1 && !loop;
+    stage.classList.toggle('auto', !stops);
+    pause.hidden = !motion || stops;
     // Previews that embed the page (srcdoc frames) refuse URL changes; the slide still has to show.
     try {
       history.replaceState(null, '', `#${index + 1}`);
@@ -743,14 +745,17 @@
     unfocus(e);
     setPaused(!stage.classList.contains('paused'));
   });
-  progress.addEventListener('animationend', () => step(1));
+  progress.addEventListener('animationend', () => (loop && index === slides.length - 1 ? show(0) : step(1)));
+  if (loop) stage.addEventListener('click', (e) => !e.target.closest('.pause') && setPaused(true));
   // Someone tabbing through the page is reading at their own pace.
   stage.addEventListener('focusin', (e) => e.target !== pause && e.target.matches(':focus-visible') && setPaused(true));
   document.addEventListener('visibilitychange', () => stage.classList.toggle('away', document.hidden));
   addEventListener('keydown', (e) => {
     if (e.target.closest('input')) return; // keys belong to the text field
-    if (e.key === 'ArrowRight') step(1);
-    if (e.key === 'ArrowLeft') step(-1);
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+      step(e.key === 'ArrowRight' ? 1 : -1);
+      if (loop) setPaused(true);
+    }
     if (e.key === ' ' && !e.target.closest('button')) {
       e.preventDefault();
       setPaused(!stage.classList.contains('paused'));
