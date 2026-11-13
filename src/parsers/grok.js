@@ -1,9 +1,7 @@
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
-import { eachLine, fileStamp, ls, projectName, safeParse } from '../util.js';
+import { eachLine, fileStamp, homes, ls, newest, projectName, safeParse } from '../util.js';
 
-const ROOT = path.join(process.env.GROK_HOME || path.join(os.homedir(), '.grok'), 'sessions');
 const WANTED = ['turn_started', 'loop_started', 'tool_started'].map((t) => Buffer.from(`"type":"${t}"`));
 const TOKENS = Buffer.from('"totalTokens"');
 
@@ -15,23 +13,27 @@ const TOKENS = Buffer.from('"totalTokens"');
  */
 export const grok = {
   id: 'grok',
+  homes: () => homes('.grok', { env: 'GROK_HOME', markers: ['sessions'] }),
   list() {
     const out = [];
-    for (const cwd of ls(ROOT)) {
-      for (const session of ls(path.join(ROOT, cwd))) {
-        const dir = path.join(ROOT, cwd, session);
-        const events = fileStamp(path.join(dir, 'events.jsonl'));
-        if (!events) continue;
-        const updates = fileStamp(path.join(dir, 'updates.jsonl'));
-        out.push({
-          key: `${cwd}/${session}`,
-          dir,
-          size: events.size + (updates?.size ?? 0),
-          mtimeMs: Math.max(events.mtimeMs, updates?.mtimeMs ?? 0),
-        });
+    for (const home of this.homes()) {
+      const root = path.join(home, 'sessions');
+      for (const cwd of ls(root)) {
+        for (const session of ls(path.join(root, cwd))) {
+          const dir = path.join(root, cwd, session);
+          const events = fileStamp(path.join(dir, 'events.jsonl'));
+          if (!events) continue;
+          const updates = fileStamp(path.join(dir, 'updates.jsonl'));
+          out.push({
+            key: `${cwd}/${session}`,
+            dir,
+            size: events.size + (updates?.size ?? 0),
+            mtimeMs: Math.max(events.mtimeMs, updates?.mtimeMs ?? 0),
+          });
+        }
       }
     }
-    return out;
+    return newest(out);
   },
 
   async read({ dir }, emit) {

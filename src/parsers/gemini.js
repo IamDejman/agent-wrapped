@@ -1,9 +1,6 @@
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
-import { ls, safeParse } from '../util.js';
-
-const ROOT = path.join(os.homedir(), '.gemini', 'tmp');
+import { homes, ls, newest, safeParse } from '../util.js';
 
 /**
  * Gemini CLI: ~/.gemini/tmp/<project>/chats/session-*.json, one file per chat
@@ -13,18 +10,22 @@ const ROOT = path.join(os.homedir(), '.gemini', 'tmp');
 export const gemini = {
   id: 'gemini',
   untested: true,
+  homes: () => homes('.gemini', { markers: ['tmp'] }),
   list() {
     const out = [];
-    for (const project of ls(ROOT)) {
-      const chats = path.join(ROOT, project, 'chats');
-      for (const name of ls(chats)) {
-        if (!/^session-.*\.json$/.test(name)) continue;
-        const file = path.join(chats, name);
-        const s = fs.statSync(file);
-        out.push({ key: `${project}/${name}`, file, size: s.size, mtimeMs: s.mtimeMs });
+    for (const home of this.homes()) {
+      const root = path.join(home, 'tmp');
+      for (const project of ls(root)) {
+        const chats = path.join(root, project, 'chats');
+        for (const name of ls(chats)) {
+          if (!/^session-.*\.json$/.test(name)) continue;
+          const file = path.join(chats, name);
+          const s = fs.statSync(file);
+          out.push({ key: `${project}/${name}`, file, size: s.size, mtimeMs: s.mtimeMs });
+        }
       }
     }
-    return out;
+    return newest(out);
   },
 
   read({ file }, emit) {

@@ -1,8 +1,7 @@
-import os from 'node:os';
 import path from 'node:path';
-import { eachLine, findJsonl, projectName, safeParse } from '../util.js';
+import { eachLine, findJsonl, homes, newest, projectName, safeParse } from '../util.js';
 
-const HOME = process.env.CODEX_HOME || path.join(os.homedir(), '.codex');
+const DIRS = ['sessions', 'archived_sessions'];
 const MARKERS = [
   'session_meta',
   'turn_context',
@@ -38,15 +37,10 @@ const usageEvent = (base, model, u) => {
  */
 export const codex = {
   id: 'codex',
+  homes: () => homes('.codex', { env: 'CODEX_HOME', markers: DIRS }),
   list() {
-    const byName = new Map();
-    for (const dir of ['sessions', 'archived_sessions']) {
-      for (const f of findJsonl(path.join(HOME, dir))) {
-        const key = path.basename(f.file).replace(/\.zst$/, '');
-        if (!byName.has(key)) byName.set(key, { ...f, key });
-      }
-    }
-    return [...byName.values()];
+    const files = this.homes().flatMap((home) => DIRS.flatMap((dir) => findJsonl(path.join(home, dir))));
+    return newest(files.map((f) => ({ ...f, key: path.basename(f.file).replace(/\.zst$/, '') })));
   },
 
   async read({ file }, emit) {

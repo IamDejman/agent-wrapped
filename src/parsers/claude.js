@@ -1,20 +1,33 @@
 import os from 'node:os';
 import path from 'node:path';
-import { eachLine, findJsonl, projectName, safeParse } from '../util.js';
+import { eachLine, findJsonl, homes, newest, projectName, safeParse } from '../util.js';
 
-const ROOT = path.join(process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude'), 'projects');
 const TOOL_RESULT = Buffer.from('"type":"tool_result"');
 
 /**
  * Claude Code transcripts: ~/.claude/projects/<project>/<session>.jsonl, with
- * subagent and workflow transcripts nested one or more folders deeper.
+ * subagent and workflow transcripts nested one or more folders deeper. Each
+ * account or profile has its own folder (~/.claude-work), read the same way.
  * Most bytes are tool results and request blobs, so lines are filtered on
  * their raw prefix before any JSON.parse. Forked sessions repeat history, so
  * every event carries the id of its message for the wrap to count once.
  */
 export const claude = {
   id: 'claude',
-  list: () => findJsonl(ROOT).map((f) => ({ ...f, key: path.relative(ROOT, f.file) })),
+  homes: () =>
+    homes('.claude', {
+      env: 'CLAUDE_CONFIG_DIR',
+      markers: ['projects'],
+      extra: [path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'), 'claude')],
+    }),
+  list() {
+    return newest(
+      this.homes().flatMap((home) => {
+        const root = path.join(home, 'projects');
+        return findJsonl(root).map((f) => ({ ...f, key: path.relative(root, f.file) }));
+      }),
+    );
+  },
 
   async read({ file, depth }, emit) {
     const mainFile = depth === 1;

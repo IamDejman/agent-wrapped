@@ -1,9 +1,10 @@
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { fileStamp, ls, projectName } from '../util.js';
+import { fileStamp, homes, ls, newest, projectName } from '../util.js';
 
-const ROOT = path.join(os.homedir(), '.gemini', 'antigravity');
+/** Antigravity and Antigravity IDE each keep a folder in ~/.gemini: antigravity, antigravity-ide. */
+const roots = () => homes('antigravity', { parent: path.join(os.homedir(), '.gemini'), markers: ['conversations'] });
 const USER_INPUT = 14;
 const PLANNER_RESPONSE = 15;
 
@@ -59,10 +60,9 @@ function time(buf) {
   return typeof secs === 'number' ? secs * 1000 + Math.floor((at(buf, 2) || 0) / 1e6) : 0;
 }
 
-function loadSummaries(DatabaseSync) {
-  const byId = new Map();
+function loadSummaries(DatabaseSync, root, byId) {
   try {
-    const db = new DatabaseSync(path.join(ROOT, 'conversation_summaries.db'), { readOnly: true });
+    const db = new DatabaseSync(path.join(root, 'conversation_summaries.db'), { readOnly: true });
     try {
       const rows = db.prepare('select conversation_id id, nesting_depth depth, parent_conversation_id parent, workspace_uris uris from conversation_summaries').all();
       for (const r of rows) {
@@ -81,7 +81,6 @@ function loadSummaries(DatabaseSync) {
   } catch {
     // older installs have no summaries: every conversation counts as a person's own
   }
-  return byId;
 }
 
 /**
@@ -97,17 +96,23 @@ let sqlite; // { DatabaseSync, summaries }, loaded once for all conversations
 
 export const antigravity = {
   id: 'antigravity',
+  homes: roots,
   list() {
-    const dir = path.join(ROOT, 'conversations');
-    return ls(dir)
-      .filter((f) => f.endsWith('.db'))
-      .map((f) => ({ key: f, file: path.join(dir, f), ...fileStamp(path.join(dir, f)) }));
+    return newest(
+      roots().flatMap((root) => {
+        const dir = path.join(root, 'conversations');
+        return ls(dir)
+          .filter((f) => f.endsWith('.db'))
+          .map((f) => ({ key: f, file: path.join(dir, f), ...fileStamp(path.join(dir, f)) }));
+      }),
+    );
   },
 
   async read({ file }, emit) {
     if (!sqlite) {
       const { DatabaseSync } = await import('node:sqlite');
-      sqlite = { DatabaseSync, summaries: loadSummaries(DatabaseSync) };
+      sqlite = { DatabaseSync, summaries: new Map() };
+      for (const root of roots()) loadSummaries(DatabaseSync, root, sqlite.summaries);
     }
     const session = path.basename(file, '.db');
     const { main = true, project = null } = sqlite.summaries.get(session) ?? {};

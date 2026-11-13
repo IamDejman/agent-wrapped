@@ -29,6 +29,18 @@ Kimi Code, Windsurf, Cline, Roo Code, Continue, Goose, Qwen Code, Factory Droid,
 
 Models are counted under the tool that called them. DeepSeek, Kimi or any other model used inside one of the tools above shows up there.
 
+## Profiles and second accounts
+
+Every profile on the machine is read, not only the default one:
+
+- Folders beside the default one that hold history, such as `~/.claude-work` next to `~/.claude`. The same goes for Codex, Grok, Gemini CLI and Antigravity.
+- The folder named by `CLAUDE_CONFIG_DIR`, `CODEX_HOME` or `GROK_HOME`, if it is set when you run this.
+- Each profile made inside Cursor or VS Code.
+
+A chat that sits in two of them, such as a backup copy, is counted once. `--doctor` shows how many profiles were found for each tool.
+
+Not found: history under another user account on the computer, and folders with unrelated names. For those, run once with the variable pointing at the folder, for example `CLAUDE_CONFIG_DIR=/path/to/folder npx ai-wrapped-year`. The archive keeps what it read.
+
 ## API keys and missing months
 
 Using an API key inside one of the tools above changes nothing: the logs are the same.

@@ -38,6 +38,8 @@ async function check(source) {
   }
   if (!files) return 'not found';
   const parts = [count(files, 'file'), count(events, 'event')];
+  const profiles = source.homes?.().length ?? 1;
+  if (profiles > 1) parts.push(count(profiles, 'profile'));
   if (events) parts.push(`${day(first)} to ${day(last)}`);
   if (failed) parts.push(`${failed} unreadable`);
   if (source.untested) parts.push('reader not checked against real history yet');

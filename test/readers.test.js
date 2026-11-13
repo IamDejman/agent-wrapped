@@ -213,3 +213,52 @@ test('Antigravity: steps and usage from protobuf blobs', async () => {
     { ts: MS + 5000, model: 'gemini-4-argon', in: 100, out: 20, cacheWrite: 5, cacheRead: 300 },
   );
 });
+
+test('Profiles: a second account, a moved home and a copy of the first', async (t) => {
+  const prompt = (uuid) => [{ parentUuid: null, isSidechain: false, type: 'user', timestamp: T, sessionId: uuid, cwd: PROJECT, uuid, message: { role: 'user', content: 'hello' } }];
+  const chat = ['projects', '-Users-dev-code-alpha', 's9.jsonl'];
+  jsonl(at('.claude-work', ...chat), prompt('work'));
+  // The same chat in a copy of the folder: the newer file is the one that counts.
+  fs.utimesSync(jsonl(at('.claude-backup', ...chat), prompt('stale')), 1, 1);
+  jsonl(at('elsewhere', 'projects', '-Users-dev-code-alpha', 's8.jsonl'), prompt('moved'));
+  write(at('.claude-worktrees', 'notes.txt'), 'not a profile');
+  fs.symlinkSync(at('.claude-work'), at('.claude-link'), 'junction');
+  process.env.CLAUDE_CONFIG_DIR = at('elsewhere');
+  t.after(() => delete process.env.CLAUDE_CONFIG_DIR);
+
+  assert.equal(claude.homes().length, 4);
+  assert.deepEqual(kinds(await collect(claude), 'prompt').map((ev) => ev.id).sort(), ['moved', 'u1', 'work']);
+});
+
+test('Profiles: Grok, Gemini CLI and Antigravity folders beside the default', async () => {
+  const dir = at('.grok-work', 'sessions', 'Users-dev-code-alpha', 'g2');
+  json(path.join(dir, 'summary.json'), { info: { cwd: PROJECT } });
+  jsonl(path.join(dir, 'events.jsonl'), [{ ts: T, type: 'turn_started', model_id: 'grok-4.6' }]);
+  assert.equal(kinds(await collect(grok), 'prompt').length, 2);
+
+  json(at('.gemini-work', 'tmp', 'proj', 'chats', 'session-2.json'), { sessionId: 'gm2', messages: [{ id: 'm1', type: 'user', timestamp: T }] });
+  assert.equal(kinds(await collect(gemini), 'prompt').length, 2);
+
+  database(at('.gemini', 'antigravity-ide', 'conversations', 'conv2.db'), 'CREATE TABLE steps (idx INTEGER, step_type INTEGER, metadata BLOB, step_payload BLOB)').close();
+  fs.mkdirSync(at('.gemini', 'antigravity-backup'));
+  assert.deepEqual(antigravity.list().map((e) => e.key).sort(), ['conv1.db', 'conv2.db']);
+});
+
+test('Profiles: editor profiles in Cursor and VS Code', async () => {
+  const user = at('.config', 'Cursor', 'User');
+  const db = database(path.join(user, 'profiles', 'p1', 'globalStorage', 'state.vscdb'), 'CREATE TABLE cursorDiskKV (key TEXT PRIMARY KEY, value BLOB)');
+  const put = db.prepare('INSERT INTO cursorDiskKV VALUES (?, ?)');
+  for (const id of ['c1', 'c2']) {
+    put.run(`composerData:${id}`, JSON.stringify({ createdAt: MS }));
+    put.run(`bubbleId:${id}:1`, JSON.stringify({ type: 1, createdAt: T }));
+  }
+  db.close();
+  // A profile that never opened a chat has no chat table.
+  database(path.join(user, 'profiles', 'p2', 'globalStorage', 'state.vscdb'), 'CREATE TABLE ItemTable (key TEXT, value BLOB)').close();
+
+  assert.equal(cursor.stamp().split('|').length, 3);
+  assert.deepEqual(kinds(await collect(cursor), 'prompt').map((ev) => ev.session), ['c1', 'c2']);
+
+  json(at('.config', 'Code', 'User', 'profiles', 'p1', 'globalStorage', 'emptyWindowChatSessions', 'chat2.json'), { sessionId: 'cp2', requests: [{ requestId: 'r2', timestamp: MS }] });
+  assert.deepEqual(kinds(await collect(copilot), 'prompt').map((ev) => ev.project), ['alpha', null]);
+});

@@ -77,6 +77,44 @@ export function findJsonl(dir, depth = 0, out = []) {
   return out;
 }
 
+/**
+ * Every folder one tool keeps history in. A second account or profile is the
+ * same tool pointed at a sibling folder (CLAUDE_CONFIG_DIR=~/.claude-work), so
+ * folders named like the default count too when they hold one of the markers.
+ */
+export function homes(base, { env, markers, parent = os.homedir(), extra = [] }) {
+  const siblings = ls(parent)
+    .filter((n) => n === base || (n.startsWith(base) && /^[-_.]/.test(n.slice(base.length))))
+    .sort();
+  const found = new Map();
+  for (const dir of [process.env[env], ...siblings.map((n) => path.join(parent, n)), ...extra]) {
+    if (!dir || !markers.some((m) => fs.existsSync(path.join(dir, m)))) continue;
+    try {
+      const real = fs.realpathSync(dir); // a profile linked to another one is the same history
+      if (!found.has(real)) found.set(real, dir);
+    } catch {
+      // vanished while looking
+    }
+  }
+  return [...found.values()];
+}
+
+/** One entry per key: a chat that sits in two profiles (a backup, a copy) counts once, in its newest form. */
+export function newest(entries) {
+  const byKey = new Map();
+  for (const e of entries) {
+    const old = byKey.get(e.key);
+    if (!old || e.mtimeMs > old.mtimeMs) byKey.set(e.key, e);
+  }
+  return [...byKey.values()];
+}
+
+/** A VS Code family User folder and the folder of each profile made in it. */
+export function withProfiles(userDir) {
+  const profiles = path.join(userDir, 'profiles');
+  return [userDir, ...ls(profiles).map((p) => path.join(profiles, p))];
+}
+
 /** Where a VS Code family editor keeps its User folder on macOS, Windows and Linux. */
 export function appUserDirs(app) {
   const home = os.homedir();
