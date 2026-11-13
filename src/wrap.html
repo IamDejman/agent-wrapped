@@ -361,12 +361,15 @@
       return false;
     }
   })();
-  function shareCard(canvas) {
-    canvas.toBlob((blob) => {
-      navigator.share({ files: [new File([blob], cardName, { type: 'image/png' })] }).catch((err) => {
+  // The image made ahead keeps the tap's permission to share, which waiting for toBlob can lose on iPhone.
+  function shareCard(canvas, png) {
+    const send = (blob) => {
+      navigator.share({ files: [new File([blob], cardName, { type: 'image/png' })], text: `${POST} ${HOMEPAGE}` }).catch((err) => {
         if (err.name !== 'AbortError') saveCard(canvas); // closing the share sheet is not a failure
       });
-    }, 'image/png');
+    };
+    if (png) send(png);
+    else canvas.toBlob(send, 'image/png');
   }
 
   // --- friends ------------------------------------------------------------
@@ -411,28 +414,28 @@
     return [...byCode.values()].slice(-3);
   }
 
-  // A link can open an app's post box with text in it, but never with an image, so the card goes
-  // to the clipboard to be pasted in. Instagram and Discord have no such link.
+  // A link can open an app's post box with text in it, but never with an image. Phones attach the card
+  // through the share sheet; elsewhere it goes to the clipboard to be pasted in.
   const apple = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
   const touch = matchMedia('(pointer: coarse)').matches;
   const HOMEPAGE = 'https://github.com/IamDejman/ai-wrapped-year';
+  const POST = `My ${D.year} with AI: ${D.persona.title}. ${num(T.prompts)} prompts, ${short(T.tokens.total)} tokens. Compare with me: npx ai-wrapped-year --vs ${myCode}`;
   const APPS = (() => {
-    const post = `My ${D.year} with AI: ${D.persona.title}. ${num(T.prompts)} prompts, ${short(T.tokens.total)} tokens. Compare with me: npx ai-wrapped-year --vs ${myCode}`;
     const q = encodeURIComponent;
     return [
-      ['X', `https://x.com/intent/tweet?text=${q(post)}&url=${q(HOMEPAGE)}`],
+      ['X', `https://x.com/intent/tweet?text=${q(POST)}&url=${q(HOMEPAGE)}`],
       ['LinkedIn', `https://www.linkedin.com/sharing/share-offsite/?url=${q(HOMEPAGE)}`],
       ['Facebook', `https://www.facebook.com/sharer/sharer.php?u=${q(HOMEPAGE)}`],
-      ['WhatsApp', `https://wa.me/?text=${q(`${post} ${HOMEPAGE}`)}`],
-      ['Reddit', `https://www.reddit.com/submit?url=${q(HOMEPAGE)}&title=${q(post)}`],
-      apple && ['Messages', `sms:&body=${q(`${post} ${HOMEPAGE}`)}`],
+      ['WhatsApp', `https://wa.me/?text=${q(`${POST} ${HOMEPAGE}`)}`],
+      ['Reddit', `https://www.reddit.com/submit?url=${q(HOMEPAGE)}&title=${q(POST)}`],
+      apple && ['Messages', `sms:&body=${q(`${POST} ${HOMEPAGE}`)}`],
       ['Instagram', 'https://www.instagram.com/'],
       ['Discord', 'https://discord.com/channels/@me'],
     ].filter(Boolean);
   })();
   async function postTo(name, url, canvas, png, say) {
-    // Instagram takes images only from its own app, which a phone's share sheet reaches.
-    if (name === 'Instagram' && touch && canShare) return shareCard(canvas);
+    // A link can't carry an image, but a phone's share sheet can, into whichever app is picked there.
+    if (touch && canShare) return shareCard(canvas, png);
     let copied = false;
     if (name !== 'Instagram' && png && window.ClipboardItem) {
       try {
@@ -505,7 +508,7 @@
       lead('Your most-used model'),
       big(D.models[0].name),
       unit(`${pct(D.models[0].replies / replies)} of replies`),
-      rows(D.models.slice(1).map((m) => [m.name, pct(m.replies / replies)])),
+      rows(D.models.slice(1, 6).map((m) => [m.name, pct(m.replies / replies)])),
     ]),
     () => [
       lead('Your busiest hour'),
@@ -608,7 +611,7 @@
       drawCard(canvas);
       const button = (label, run) => {
         const b = el('button', { class: 'save', type: 'button' }, label);
-        b.addEventListener('click', () => run(canvas));
+        b.addEventListener('click', () => run(canvas, png));
         return b;
       };
       // Made ahead, so a click can put it on the clipboard straight away.
@@ -659,6 +662,12 @@
     }
     slide.classList.remove('tight');
     slide.classList.toggle('tight', slide.scrollHeight > slide.clientHeight + 1);
+    // Still too tall, like a long model name on three lines above a list: the big text gives way.
+    const over = () => slide.scrollHeight > slide.clientHeight + 1;
+    for (const b of slide.querySelectorAll('.big')) {
+      let size = parseFloat(b.style.fontSize);
+      while (over() && size > w * 0.1) b.style.fontSize = `${(size *= 0.92)}px`;
+    }
   }
 
   function countUp(span) {
@@ -722,10 +731,11 @@
   stage.addEventListener('pointerleave', release);
   // A click (detail > 0, unlike Enter or Space) lets go of focus, or the next arrow key draws the focus ring over the slide.
   const unfocus = (e) => e.detail && e.currentTarget.blur();
-  const go = (step) => (e) => {
+  const step = (n) => index + n >= 0 && index + n < slides.length && show(index + n);
+  const go = (n) => (e) => {
     unfocus(e);
     if (held) held = false;
-    else show(index + step);
+    else step(n);
   };
   document.getElementById('prev').addEventListener('click', go(-1));
   document.getElementById('next').addEventListener('click', go(1));
@@ -733,14 +743,14 @@
     unfocus(e);
     setPaused(!stage.classList.contains('paused'));
   });
-  progress.addEventListener('animationend', () => show(index + 1));
+  progress.addEventListener('animationend', () => step(1));
   // Someone tabbing through the page is reading at their own pace.
   stage.addEventListener('focusin', (e) => e.target !== pause && e.target.matches(':focus-visible') && setPaused(true));
   document.addEventListener('visibilitychange', () => stage.classList.toggle('away', document.hidden));
   addEventListener('keydown', (e) => {
     if (e.target.closest('input')) return; // keys belong to the text field
-    if (e.key === 'ArrowRight') show(index + 1);
-    if (e.key === 'ArrowLeft') show(index - 1);
+    if (e.key === 'ArrowRight') step(1);
+    if (e.key === 'ArrowLeft') step(-1);
     if (e.key === ' ' && !e.target.closest('button')) {
       e.preventDefault();
       setPaused(!stage.classList.contains('paused'));
