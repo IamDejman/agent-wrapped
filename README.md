@@ -1,4 +1,4 @@
-# agent-wrapped
+# ai-wrapped-year
 
 Your year with AI coding tools, as a story you can share. It reads the logs those tools already keep on your machine, so there is nothing to sign in to and nothing to upload.
 

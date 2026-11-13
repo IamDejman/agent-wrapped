@@ -19,7 +19,7 @@ const { Wrap } = await import('../src/stats.js');
 const { loadUsageCsv } = await import('../src/usage-csv.js');
 
 const readers = SOURCES.filter((s) => s.read).map((s) => s.name);
-const HELP = `agent-wrapped: your year with AI coding tools, computed on this machine.
+const HELP = `ai-wrapped-year: your year with AI coding tools, computed on this machine.
 
 Usage: npx ai-wrapped-year [options]
 
