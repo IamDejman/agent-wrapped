@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { compare, totals } from '../src/compare.js';
+import { compare, friendCodes, totals } from '../src/compare.js';
+import fs from 'node:fs';
 import { doctor } from '../src/doctor.js';
 import { start } from '../server/percentiles.js';
 
@@ -48,6 +49,24 @@ test('the command: export on one machine, import on another', () => {
   const elsewhere = { ...process.env, HOME: at('other-machine'), USERPROFILE: at('other-machine'), AGENT_WRAPPED_HOME: at('other-machine', '.agent-wrapped') };
   const data = JSON.parse(execFileSync(process.execPath, [BIN, '--year', '2026', '--import', file, '--json'], { env: elsewhere, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }));
   assert.equal(data.totals.prompts, 1);
+});
+
+test('friends: --vs takes codes from anywhere in what was pasted, and refuses the rest', () => {
+  const data = JSON.parse(run('--year', '2026', '--vs', 'Sam=Compare with me: npx ai-wrapped-year --vs AW1-1ka.1.3e8.1kqsbm8.2s.e.9ix', '--vs', 'aw1-1ka.5.8ck.4xqbfzk.ds.1o.2h8n', '--json'));
+  assert.deepEqual(data.friends, [
+    { name: 'Sam', code: 'aw1-1ka.1.3e8.1kqsbm8.2s.e.9ix' },
+    { name: 'Friend 2', code: 'aw1-1ka.5.8ck.4xqbfzk.ds.1o.2h8n' },
+  ]);
+  assert.throws(() => friendCodes(['aw1-1ka.1']), /not a friend code/);
+  assert.throws(() => run('--vs', 'nonsense', '--json'), /not a friend code/);
+});
+
+test('friends: the page numbers personas in the order the wrap names them', () => {
+  const stats = fs.readFileSync(new URL('../src/stats.js', import.meta.url), 'utf8');
+  const page = fs.readFileSync(new URL('../src/wrap.html', import.meta.url), 'utf8');
+  const named = [...stats.matchAll(/is\('([^']+)'/g)].map((m) => m[1]);
+  const listed = JSON.parse(page.match(/const PERSONAS = (\[[^\]]+\])/)[1].replace(/'/g, '"'));
+  assert.deepEqual(listed, named);
 });
 
 test('doctor: what was read, and the shape of what was not, without contents', async () => {

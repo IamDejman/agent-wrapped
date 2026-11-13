@@ -59,7 +59,7 @@
 
   /* The slide sits above the tap zones but lets clicks fall through to them. */
   .slide { position: absolute; inset: 0; z-index: 1; display: flex; flex-direction: column; padding: calc(14cqw + env(safe-area-inset-top)) 8cqw calc(9cqw + env(safe-area-inset-bottom)); pointer-events: none; }
-  .slide button { pointer-events: auto; }
+  .slide button, .slide input { pointer-events: auto; }
 
   .lead, .unit { font-size: 7cqw; font-weight: 600; line-height: 1.15; text-wrap: balance; }
 
@@ -115,6 +115,21 @@
   .app:hover { background: var(--ink); color: var(--field); }
   .app:focus-visible { outline: 0.6cqw solid var(--over); outline-offset: 0.6cqw; }
   .sent { min-height: 1.3em; margin-top: 3cqw; font-size: 3.8cqw; font-weight: 500; text-align: center; }
+
+  .vs { width: 100%; margin-top: 5cqw; border-collapse: collapse; font-size: 4.2cqw; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .vs th, .vs td { padding: 1.8cqw 1.4cqw; border-top: 0.5cqw solid currentColor; text-align: right; white-space: nowrap; }
+  .vs thead th { max-width: 18cqw; overflow: hidden; border-top: 0; text-overflow: ellipsis; }
+  .vs th:first-child { padding-left: 0; text-align: left; }
+  .vs .win { background: var(--ink); color: var(--field); }
+  .pair { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2cqw; margin-top: 4cqw; }
+  .push { margin-top: auto; }
+  .mine { grid-column: 1 / -1; margin: 0; font-size: 4.6cqw; font-weight: 700; overflow-wrap: anywhere; user-select: text; }
+  .mine + .save { justify-self: start; }
+  .pair .save { padding: 2.4cqw 4cqw; font-size: 4cqw; }
+  .field { min-width: 0; padding: 2.4cqw 3cqw; border: 0; border-radius: 0; background: none; color: var(--ink); box-shadow: inset 0 0 0 0.5cqw var(--ink); font: 600 max(16px, 4cqw) var(--text); user-select: text; }
+  .field::placeholder { color: color-mix(in srgb, var(--ink) 60%, transparent); }
+  .field:focus-visible { outline: 0.6cqw solid var(--over); outline-offset: 0.6cqw; }
+  .add .field:first-child { grid-column: 1 / -1; }
 </style>
 </head>
 <body>
@@ -354,13 +369,55 @@
     }, 'image/png');
   }
 
+  // --- friends ------------------------------------------------------------
+  // A friend code holds the year, the persona and five totals, nothing else, so it can be posted anywhere.
+  const PERSONAS = ['The Night Shift', 'The Dawn Patrol', 'The Polyglot', 'The Weekend Builder', 'The Juggler', 'The Deep Diver', 'The Steady Hand'];
+  const FIELDS = ['prompts', 'tokens', 'hours', 'streak', 'cost'];
+  const MINE = {
+    name: 'You',
+    prompts: T.prompts,
+    tokens: T.tokens.total,
+    hours: Math.round((T.activeMs ?? 0) / 3.6e6),
+    streak: D.streak?.days ?? 0,
+    cost: Math.round(D.cost?.total ?? 0),
+  };
+  const myCode = `aw1-${[D.year, PERSONAS.indexOf(D.persona.title) + 1, ...FIELDS.map((f) => MINE[f])].map((n) => Math.max(0, Math.round(n)).toString(36)).join('.')}`;
+  function readCode(text) {
+    const code = String(text).match(/aw1-[0-9a-z]+(?:\.[0-9a-z]+){6}/i)?.[0].toLowerCase();
+    const [year, persona, ...totals] = code ? code.slice(4).split('.').map((n) => parseInt(n, 36)) : [];
+    if (!code || ![year, persona, ...totals].every(Number.isSafeInteger)) return null;
+    return { code, year, persona: PERSONAS[persona - 1], ...Object.fromEntries(FIELDS.map((f, i) => [f, totals[i]])) };
+  }
+  // Codes pasted into the page stay in this browser; codes from --vs come with the page.
+  const KEPT = `agent-wrapped-friends-${D.year}`;
+  const kept = () => {
+    try {
+      return JSON.parse(localStorage.getItem(KEPT)) ?? [];
+    } catch {
+      return [];
+    }
+  };
+  const keep = (list) => {
+    try {
+      localStorage.setItem(KEPT, JSON.stringify(list));
+    } catch {}
+  };
+  function friends() {
+    const byCode = new Map();
+    for (const f of [...(D.friends ?? []), ...kept()]) {
+      const d = readCode(f?.code ?? '');
+      if (d && d.code !== myCode) byCode.set(d.code, { ...d, name: String(f.name || 'Friend').slice(0, 24) });
+    }
+    return [...byCode.values()].slice(-3);
+  }
+
   // A link can open an app's post box with text in it, but never with an image, so the card goes
   // to the clipboard to be pasted in. Instagram and Discord have no such link.
   const apple = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
   const touch = matchMedia('(pointer: coarse)').matches;
   const HOMEPAGE = 'https://github.com/IamDejman/ai-wrapped-year';
   const APPS = (() => {
-    const post = `My ${D.year} with AI: ${D.persona.title}. ${num(T.prompts)} prompts, ${short(T.tokens.total)} tokens. Make yours with npx ai-wrapped-year`;
+    const post = `My ${D.year} with AI: ${D.persona.title}. ${num(T.prompts)} prompts, ${short(T.tokens.total)} tokens. Compare with me: npx ai-wrapped-year --vs ${myCode}`;
     const q = encodeURIComponent;
     return [
       ['X', `https://x.com/intent/tweet?text=${q(post)}&url=${q(HOMEPAGE)}`],
@@ -497,6 +554,56 @@
       facts(D.persona.line, rank && `Top ${rank[1]}% for ${RANKED[rank[0]] ?? rank[0]} among ${plural(D.rank.n, 'wrap')}`),
     ],
     () => {
+      const them = friends();
+      const cols = [MINE, ...them];
+      const ROWS = [['Prompts', 'prompts', short], ['Tokens', 'tokens', short], ['Hours', 'hours', short], ['Day streak', 'streak', num], ['API value', 'cost', money]];
+      const table = them.length > 0 && el('table', { class: 'vs' },
+        el('thead', {}, el('tr', {}, el('th', {}), cols.map((c, i) => el('th', i ? { scope: 'col', translate: 'no', title: c.name } : { scope: 'col' }, c.name)))),
+        el('tbody', {}, ROWS.map(([label, f, format]) => {
+          const best = Math.max(...cols.map((c) => c[f]));
+          return el('tr', {}, el('th', { scope: 'row' }, label), cols.map((c) => el('td', best > 0 && c[f] === best ? { class: 'win' } : {}, format(c[f]))));
+        })));
+      const sent = el('p', { class: 'sent', role: 'status' });
+      const say = (text) => (sent.textContent = text);
+
+      const mine = el('p', { class: 'mine', translate: 'no' }, myCode);
+      const copy = el('button', { class: 'save', type: 'button' }, 'Copy my code');
+      copy.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(myCode);
+          say('Copied. Send it to a friend.');
+        } catch {
+          getSelection().selectAllChildren(mine);
+          say(`Press ${apple ? '⌘C' : 'Ctrl+C'} to copy it.`);
+        }
+      });
+
+      const code = el('input', { class: 'field', name: 'code', autocomplete: 'off', spellcheck: 'false', placeholder: 'Friend’s code…', 'aria-label': 'Friend’s code' });
+      const name = el('input', { class: 'field', name: 'name', autocomplete: 'off', maxlength: '24', placeholder: 'Their name…', 'aria-label': 'Their name' });
+      const add = el('form', { class: 'pair add' }, code, name, el('button', { class: 'save', type: 'submit' }, 'Compare'));
+      add.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const d = readCode(code.value);
+        if (!d) {
+          say('Friend codes start with aw1-. Paste the whole code.');
+          return code.focus();
+        }
+        if (d.code === myCode) return say('That one is your own code.');
+        keep([...kept().filter((f) => f.code !== d.code), { name: name.value.trim() || 'Friend', code: d.code }]);
+        show(index);
+      });
+
+      const one = them.length === 1 && them[0];
+      return [
+        lead(them.length ? `You vs ${one ? one.name : 'friends'}` : 'Compare with friends'),
+        table,
+        one?.persona && facts(`You: ${D.persona.title}`, `${one.name}: ${one.persona}`),
+        el('div', { class: them.length ? 'pair push' : 'pair' }, mine, copy),
+        add,
+        sent,
+      ];
+    },
+    () => {
       const canvas = el('canvas', { class: 'card', role: 'img', 'aria-label': `Share card: ${[D.persona.title, D.persona.means].filter(Boolean).join(', ')}, ${num(T.prompts)} prompts, ${short(T.tokens.total)} tokens` });
       drawCard(canvas);
       const button = (label, run) => {
@@ -631,6 +738,7 @@
   stage.addEventListener('focusin', (e) => e.target !== pause && e.target.matches(':focus-visible') && setPaused(true));
   document.addEventListener('visibilitychange', () => stage.classList.toggle('away', document.hidden));
   addEventListener('keydown', (e) => {
+    if (e.target.closest('input')) return; // keys belong to the text field
     if (e.key === 'ArrowRight') show(index + 1);
     if (e.key === 'ArrowLeft') show(index - 1);
     if (e.key === ' ' && !e.target.closest('button')) {
