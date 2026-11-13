@@ -8,3 +8,4 @@ agent-wrapped-*.html
 *.tgz
 *.db
 *.db-*
+_site/
