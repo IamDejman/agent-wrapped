@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import zlib from 'node:zlib';
+import { amp } from '../src/parsers/amp.js';
 import { antigravity } from '../src/parsers/antigravity.js';
 import { claude } from '../src/parsers/claude.js';
 import { codex } from '../src/parsers/codex.js';
@@ -212,4 +213,48 @@ test('Antigravity: steps and usage from protobuf blobs', async () => {
     { ts: reply.ts, model: reply.model, in: reply.in, out: reply.out, cacheWrite: reply.cacheWrite, cacheRead: reply.cacheRead },
     { ts: MS + 5000, model: 'gemini-4-argon', in: 100, out: 20, cacheWrite: 5, cacheRead: 300 },
   );
+});
+
+test('Amp: prompts, tool calls, and replies that borrow a time and a model', async () => {
+  const usage = { inputTokens: 10, outputTokens: 5, cacheReadInputTokens: 100, cacheCreationInputTokens: 20, totalInputTokens: 130 };
+  json(at('.local', 'share', 'amp', 'threads', 'T-1.json'), {
+    v: 1,
+    id: 'T-1',
+    created: MS,
+    env: { initial: { trees: [{ displayName: 'alpha', uri: `file://${PROJECT}` }] } },
+    messages: [
+      { role: 'user', messageId: 0, content: [{ type: 'text', text: 'hello' }], meta: { sentAt: MS + 1000 } },
+      { role: 'assistant', messageId: 1, content: [{ type: 'tool_use', id: 'toolu_1', name: 'Read', input: {} }], usage: { ...usage, model: 'claude-haiku-4-5-20251001' } },
+      { role: 'user', messageId: 2, content: [{ type: 'tool_result', toolUseID: 'toolu_1' }] },
+      { role: 'assistant', messageId: 3, content: [{ type: 'text', text: 'done' }], usage: { ...usage, outputTokens: 50 } },
+      { role: 'assistant', messageId: 4, content: [{ type: 'text', text: 'stopped' }], state: { type: 'cancelled' } },
+      { role: 'user', messageId: 5, content: [{ type: 'image' }], meta: { sentAt: MS + 9000 } },
+      { role: 'assistant', messageId: 6, content: [], usage: { ...usage, model: 'claude-opus-4-5-20251101', timestamp: later(12) } },
+    ],
+  });
+  json(at('.local', 'share', 'amp', 'threads', 'T-2.json'), {
+    id: 'T-2',
+    created: MS,
+    mainThreadID: 'T-1',
+    messages: [
+      { role: 'user', content: [{ type: 'text', text: 'a task for the subagent' }], meta: { sentAt: MS + 2000 } },
+      { role: 'assistant', content: [], usage },
+    ],
+  });
+  json(at('.local', 'share', 'amp', 'threads', 'notes.json'), { messages: [{ role: 'user', content: [{ type: 'text', text: 'not a thread' }] }] });
+
+  const events = await collect(amp);
+  assert.deepEqual(kinds(events, 'prompt').map((ev) => [ev.session, ev.ts - MS, ev.project]), [['T-1', 1000, 'alpha'], ['T-1', 9000, 'alpha']]);
+  assert.deepEqual(kinds(events, 'tool').map((ev) => [ev.name, ev.id]), [['Read', 'toolu_1']]);
+  const replies = kinds(events, 'reply').sort((a, b) => a.session.localeCompare(b.session)); // files come in no set order
+  assert.deepEqual(
+    replies.map((ev) => [ev.session, ev.ts - MS, ev.model, ev.out, ev.main]),
+    [
+      ['T-1', 1000, 'claude-haiku-4-5-20251001', 5, true],
+      ['T-1', 1000, 'claude-haiku-4-5-20251001', 50, true],
+      ['T-1', 12000, 'claude-opus-4-5-20251101', 5, true],
+      ['T-2', 2000, null, 5, false],
+    ],
+  );
+  assert.deepEqual({ in: replies[0].in, cacheRead: replies[0].cacheRead, cacheWrite: replies[0].cacheWrite }, { in: 10, cacheRead: 100, cacheWrite: 20 });
 });

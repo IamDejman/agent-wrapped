@@ -1,5 +1,6 @@
 import os from 'node:os';
 import path from 'node:path';
+import { amp } from './parsers/amp.js';
 import { antigravity } from './parsers/antigravity.js';
 import { claude } from './parsers/claude.js';
 import { codex } from './parsers/codex.js';
@@ -16,7 +17,7 @@ import { appUserDirs, ls } from './util.js';
  * time (list + read) or reads one database whole (stamp + read). "api" has no
  * reader: it only holds usage exports the user imported.
  */
-export const SOURCES = [claude, codex, cursor, antigravity, grok, gemini, opencode, copilot, { id: 'api' }].map((s) =>
+export const SOURCES = [claude, codex, cursor, antigravity, grok, gemini, opencode, copilot, amp, { id: 'api' }].map((s) =>
   Object.assign(s, { name: TOOL_NAMES[s.id] }),
 );
 
@@ -33,7 +34,6 @@ const UNREAD = [
   ['Goose', [path.join(home, '.local', 'share', 'goose', 'sessions')]],
   ['Qwen Code', [path.join(home, '.qwen', 'tmp')]],
   ['Factory Droid', [path.join(home, '.factory', 'sessions')]],
-  ['Amp', [path.join(home, '.local', 'share', 'amp', 'threads')]],
   ['Zed', [path.join(home, 'Library', 'Application Support', 'Zed', 'threads'), path.join(home, '.local', 'share', 'zed', 'threads')]],
 ];
 
