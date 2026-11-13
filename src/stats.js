@@ -54,7 +54,13 @@ function action(tool) {
   return ACTIONS.find(([, re]) => re.test(short))?.[0];
 }
 
-function persona({ prompts, hours, weekdays, projects, tools }) {
+/**
+ * One persona per wrap, first match wins. The name alone means nothing to
+ * someone seeing a shared card, so each comes with what it means in plain
+ * words and the numbers that earned it. Neither says "you" or names a
+ * project: both are printed on the image that gets shared.
+ */
+function persona({ prompts, hours, weekdays, projects, projectCount, tools }) {
   const share = (n) => (prompts ? n / prompts : 0);
   const night = share(hours.slice(22).concat(hours.slice(0, 5)).reduce((a, b) => a + b, 0));
   const dawn = share(hours.slice(5, 9).reduce((a, b) => a + b, 0));
@@ -62,14 +68,15 @@ function persona({ prompts, hours, weekdays, projects, tools }) {
   const topProject = projects[0] ? share(projects[0].prompts) : 0;
   const second = tools[1] ? share(tools[1].prompts) : 0;
   const pct = (x) => `${Math.round(x * 100)}%`;
+  const is = (title, means, line) => ({ title, means, line });
 
-  if (night >= 0.3) return { title: 'The Night Shift', line: `${pct(night)} of your prompts came after 10pm.` };
-  if (dawn >= 0.3) return { title: 'The Dawn Patrol', line: `${pct(dawn)} of your prompts came before 9am.` };
-  if (second >= 0.2) return { title: 'The Polyglot', line: `${tools[0].name} got ${pct(share(tools[0].prompts))}, ${tools[1].name} got ${pct(second)}.` };
-  if (weekend >= 0.35) return { title: 'The Weekend Builder', line: `${pct(weekend)} of your prompts landed on a Saturday or Sunday.` };
-  if (projects.length >= 5 && topProject <= 0.3) return { title: 'The Juggler', line: `No single project took more than ${pct(topProject)} of your prompts.` };
-  if (topProject >= 0.6) return { title: 'The Deep Diver', line: `${pct(topProject)} of your prompts went into ${projects[0].name}.` };
-  return { title: 'The Steady Hand', line: 'No late nights, no single obsession, just consistent work.' };
+  if (night >= 0.3) return is('The Night Shift', 'Works with AI late at night', `${pct(night)} of prompts sent between 10pm and 5am`);
+  if (dawn >= 0.3) return is('The Dawn Patrol', 'Starts with AI early in the morning', `${pct(dawn)} of prompts sent between 5am and 9am`);
+  if (second >= 0.2) return is('The Polyglot', 'Splits the work between AI tools', `${tools[0].name} ${pct(share(tools[0].prompts))} of prompts, ${tools[1].name} ${pct(second)}`);
+  if (weekend >= 0.35) return is('The Weekend Builder', 'Builds on weekends', `${pct(weekend)} of prompts sent on a Saturday or Sunday`);
+  if (projectCount >= 5 && topProject <= 0.3) return is('The Juggler', 'Keeps many projects going at once', `${projectCount} projects, none with more than ${pct(topProject)} of prompts`);
+  if (topProject >= 0.6) return is('The Deep Diver', 'Puts almost everything into one project', `${pct(topProject)} of prompts went into one project`);
+  return is('The Steady Hand', 'Works at an even pace', 'No late nights, no weekend rush, no single project taking over');
 }
 
 /** Consumes normalised events one at a time and produces the wrap's numbers. */
@@ -281,7 +288,7 @@ export class Wrap {
         paid: this.paidPerMonth * months.length, // 0 when the monthly price wasn't given
       },
       actions: top(this.actions, 5).map(([name, count]) => ({ name, count })),
-      persona: persona({ prompts, hours: this.hours, weekdays: this.weekdays, projects, tools }),
+      persona: persona({ prompts, hours: this.hours, weekdays: this.weekdays, projects, projectCount: this.projects.size, tools }),
     };
   }
 }
