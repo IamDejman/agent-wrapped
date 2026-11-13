@@ -1,7 +1,16 @@
 import path from 'node:path';
-import { eachLine, findJsonl, profileDirs, projectName, safeParse } from '../util.js';
+import { appDataDirs, eachLine, findJsonl, fullest, ls, profileDirs, projectName, safeParse, search } from '../util.js';
 
 const TOOL_RESULT = Buffer.from('"type":"tool_result"');
+
+/** A folder is a Claude Code profile when projects/ holds chats under folders named after a working directory (-Users-me-code). */
+const holdsChats = (dir) => {
+  const projects = path.join(dir, 'projects');
+  return ls(projects).some((p) => /^(-|[A-Za-z]--)/.test(p) && ls(path.join(projects, p)).some((f) => f.endsWith('.jsonl')));
+};
+
+/** The Claude desktop app runs sessions of its own, and each one keeps a .claude folder inside the app's data. */
+const appSessions = () => search(appDataDirs().map((base) => path.join(base, 'Claude', 'local-agent-mode-sessions')), 5, ['projects'], holdsChats);
 
 /**
  * Claude Code transcripts: ~/.claude/projects/<project>/<session>.jsonl, with
@@ -9,24 +18,20 @@ const TOOL_RESULT = Buffer.from('"type":"tool_result"');
  * Most bytes are tool results and request blobs, so lines are filtered on
  * their raw prefix before any JSON.parse. Forked sessions repeat history, so
  * every event carries the id of its message for the wrap to count once.
- * Every profile is read (see profileDirs). A chat copied from one profile to
- * another has the same path in both and only grows, so the longer copy is the
- * one read.
+ * Every profile is read (see profileDirs), and so are the sessions the desktop
+ * app runs. A chat copied from one profile to another has the same path in
+ * both and only grows, so the longer copy is the one read.
  */
 export const claude = {
   id: 'claude',
-  profiles: () => profileDirs(process.env.CLAUDE_CONFIG_DIR, '.claude', ['projects']),
+  profiles: () => profileDirs({ env: 'CLAUDE_CONFIG_DIR', name: '.claude', marks: ['projects'], proof: holdsChats }),
   list() {
-    const byKey = new Map();
-    for (const dir of this.profiles()) {
-      const root = path.join(dir, 'projects');
-      for (const f of findJsonl(root)) {
-        const key = path.relative(root, f.file);
-        const held = byKey.get(key);
-        if (!held || f.size > held.size) byKey.set(key, { ...f, key });
-      }
-    }
-    return [...byKey.values()];
+    return fullest(
+      [...this.profiles(), ...appSessions()].flatMap((dir) => {
+        const root = path.join(dir, 'projects');
+        return findJsonl(root).map((f) => ({ ...f, key: path.relative(root, f.file) }));
+      }),
+    );
   },
 
   async read({ file, depth }, emit) {

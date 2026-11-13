@@ -215,6 +215,76 @@ test('Antigravity: steps and usage from protobuf blobs', async () => {
   );
 });
 
+test('Profiles: made by an alias, an account switcher or the desktop app', async () => {
+  const chat = (dir, id) =>
+    jsonl(path.join(dir, 'projects', '-Users-dev-code-alpha', `${id}.jsonl`), [
+      { parentUuid: null, isSidechain: false, type: 'user', timestamp: T, sessionId: id, cwd: PROJECT, uuid: id, message: { role: 'user', content: 'hello' } },
+    ]);
+  const rollout = (dir, id) => jsonl(path.join(dir, 'sessions', '2026', '03', '02', `rollout-${id}.jsonl`), [{ timestamp: T, type: 'session_meta', payload: { id, cwd: PROJECT } }, { timestamp: T, type: 'event_msg', payload: { type: 'task_started' } }]);
+
+  // Folders with no telling name, pointed at from a startup file and a wrapper script.
+  write(at('.zshrc'), `export PATH="$HOME/bin:$PATH"\nalias claude-client='CLAUDE_CONFIG_DIR="$HOME/clients/acme" claude'\nalias cursor-work='cursor --user-data-dir ~/.cursor-work'\n`);
+  write(at('bin', 'codex-client'), '#!/bin/sh\nCODEX_HOME=~/clients/acme-codex exec codex "$@"\n');
+  chat(at('clients', 'acme'), 'alias');
+  rollout(at('clients', 'acme-codex'), 'wrapper');
+  // Where account switchers keep their profiles.
+  chat(at('.ccs', 'instances', 'team'), 'switcher');
+  chat(at('.ditto', 'profiles', 'side', 'claude'), 'deep');
+  rollout(at('.codex-profiles', 'team'), 'switcher');
+  // The XDG location, and a session run by the desktop app.
+  chat(at('.config', 'claude'), 'xdg');
+  chat(at('.config', 'Claude', 'local-agent-mode-sessions', 'account', 'org', 'local_1', '.claude'), 'app');
+  // Not profiles: a checked-out repository that happens to have a projects folder, and a copy with one shorter chat.
+  jsonl(at('.claude-worktrees', 'repo', 'projects', 'web', 'data.jsonl'), [{ type: 'user', uuid: 'stray', timestamp: T, message: { role: 'user', content: 'hello' } }]);
+  write(at('.claude-backup', 'projects', '-Users-dev-code-alpha', 's1.jsonl'), '');
+
+  assert.deepEqual(kinds(await collect(claude), 'prompt').map((ev) => ev.id).sort(), ['alias', 'app', 'deep', 'switcher', 'u1', 'xdg']);
+  assert.equal(claude.profiles().length, 6); // the desktop app's sessions are read but are not a profile
+  assert.deepEqual(kinds(await collect(codex), 'prompt').map((ev) => ev.session).filter((s) => !/^c\d$/.test(s)).sort(), ['switcher', 'wrapper']);
+  assert.equal(codex.profiles().length, 3);
+});
+
+test('Profiles: Grok, Gemini CLI and Antigravity folders beside the default', async () => {
+  const dir = at('.grok-work', 'sessions', 'Users-dev-code-alpha', 'g2');
+  json(path.join(dir, 'summary.json'), { info: { cwd: PROJECT } });
+  jsonl(path.join(dir, 'events.jsonl'), [{ ts: T, type: 'turn_started', model_id: 'grok-4.6' }]);
+  assert.equal(kinds(await collect(grok), 'prompt').length, 2);
+
+  json(at('.gemini-work', 'tmp', 'proj', 'chats', 'session-2.json'), { sessionId: 'gm2', messages: [{ id: 'm1', type: 'user', timestamp: T }] });
+  assert.equal(kinds(await collect(gemini), 'prompt').length, 2);
+
+  database(at('.gemini', 'antigravity-ide', 'conversations', 'conv2.db'), 'CREATE TABLE steps (idx INTEGER, step_type INTEGER, metadata BLOB, step_payload BLOB)').close();
+  fs.mkdirSync(at('.gemini', 'antigravity-backup'));
+  assert.deepEqual(antigravity.list().map((e) => e.key).sort(), ['conv1.db', 'conv2.db']);
+});
+
+test('Profiles: editor profiles in Cursor and VS Code', async () => {
+  const user = at('.config', 'Cursor', 'User');
+  const db = database(path.join(user, 'profiles', 'p1', 'globalStorage', 'state.vscdb'), 'CREATE TABLE cursorDiskKV (key TEXT PRIMARY KEY, value BLOB)');
+  const put = db.prepare('INSERT INTO cursorDiskKV VALUES (?, ?)');
+  for (const id of ['c1', 'c2']) {
+    put.run(`composerData:${id}`, JSON.stringify({ createdAt: MS }));
+    put.run(`bubbleId:${id}:1`, JSON.stringify({ type: 1, createdAt: T }));
+  }
+  db.close();
+  // A profile that never opened a chat has no chat table.
+  database(path.join(user, 'profiles', 'p2', 'globalStorage', 'state.vscdb'), 'CREATE TABLE ItemTable (key TEXT, value BLOB)').close();
+
+  // A second copy of the editor, and one started from the alias in .zshrc.
+  for (const [dir, id] of [[at('.config', 'Cursor Nightly'), 'c3'], [at('.cursor-work'), 'c4']]) {
+    const copy = database(path.join(dir, 'User', 'globalStorage', 'state.vscdb'), 'CREATE TABLE cursorDiskKV (key TEXT PRIMARY KEY, value BLOB)');
+    copy.prepare('INSERT INTO cursorDiskKV VALUES (?, ?)').run(`composerData:${id}`, JSON.stringify({ createdAt: MS }));
+    copy.prepare('INSERT INTO cursorDiskKV VALUES (?, ?)').run(`bubbleId:${id}:1`, JSON.stringify({ type: 1, createdAt: T }));
+    copy.close();
+  }
+
+  assert.equal(cursor.stamp().split('|').length, 5);
+  assert.deepEqual(kinds(await collect(cursor), 'prompt').map((ev) => ev.session), ['c1', 'c2', 'c3', 'c4']);
+
+  json(at('.config', 'Code', 'User', 'profiles', 'p1', 'globalStorage', 'emptyWindowChatSessions', 'chat2.json'), { sessionId: 'cp2', requests: [{ requestId: 'r2', timestamp: MS }] });
+  assert.deepEqual(kinds(await collect(copilot), 'prompt').map((ev) => ev.project), ['alpha', null]);
+});
+
 test('Amp: prompts, tool calls, and replies that borrow a time and a model', async () => {
   const usage = { inputTokens: 10, outputTokens: 5, cacheReadInputTokens: 100, cacheCreationInputTokens: 20, totalInputTokens: 130 };
   json(at('.local', 'share', 'amp', 'threads', 'T-1.json'), {

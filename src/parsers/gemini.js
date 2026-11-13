@@ -1,9 +1,6 @@
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
-import { ls, safeParse } from '../util.js';
-
-const ROOT = path.join(os.homedir(), '.gemini', 'tmp');
+import { fullest, ls, profileDirs, safeParse } from '../util.js';
 
 /**
  * Gemini CLI: ~/.gemini/tmp/<project>/chats/session-*.json, one file per chat
@@ -13,18 +10,23 @@ const ROOT = path.join(os.homedir(), '.gemini', 'tmp');
 export const gemini = {
   id: 'gemini',
   untested: true,
+  // GEMINI_CLI_HOME stands in for the home folder, so its history is in the .gemini folder inside it.
+  profiles: () => profileDirs({ env: 'GEMINI_CLI_HOME', within: '.gemini', name: '.gemini', marks: ['tmp'] }),
   list() {
     const out = [];
-    for (const project of ls(ROOT)) {
-      const chats = path.join(ROOT, project, 'chats');
-      for (const name of ls(chats)) {
-        if (!/^session-.*\.json$/.test(name)) continue;
-        const file = path.join(chats, name);
-        const s = fs.statSync(file);
-        out.push({ key: `${project}/${name}`, file, size: s.size, mtimeMs: s.mtimeMs });
+    for (const home of this.profiles()) {
+      const root = path.join(home, 'tmp');
+      for (const project of ls(root)) {
+        const chats = path.join(root, project, 'chats');
+        for (const name of ls(chats)) {
+          if (!/^session-.*\.json$/.test(name)) continue;
+          const file = path.join(chats, name);
+          const s = fs.statSync(file);
+          out.push({ key: `${project}/${name}`, file, size: s.size, mtimeMs: s.mtimeMs });
+        }
       }
     }
-    return out;
+    return fullest(out);
   },
 
   read({ file }, emit) {

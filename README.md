@@ -48,9 +48,23 @@ npx ai-wrapped-year --cursor-csv cursor-usage.csv
 
 Most tools delete old chats. Every run copies what it reads into `~/.agent-wrapped/archive`, so months you have already wrapped stay in your year after the tool removes them. Anything deleted before your first run is gone, so run it early.
 
-## More than one profile
+## More than one profile or account
 
-If you keep separate profiles of one tool, such as `~/.claude-work` beside `~/.claude`, or `~/.codex-work` beside `~/.codex`, every profile is read and a chat that is in two of them counts once. A profile is any folder in your home folder whose name starts with the tool's default folder name and that holds history. `CLAUDE_CONFIG_DIR` and `CODEX_HOME` are read too, and each takes a comma-separated list for profiles kept somewhere else. The run says which profiles it read.
+Every profile on the machine is read, however it was made, and a chat that sits in two of them counts once. The run says which profiles it read.
+
+| How the profile was made | Example |
+| --- | --- |
+| A folder beside the default one | `~/.claude-work` next to `~/.claude`. The same for Codex, Grok, Gemini CLI and Antigravity |
+| A variable | `CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `GROK_HOME` or `GEMINI_CLI_HOME`, set when you run this. Each takes a comma-separated list |
+| An alias or wrapper script | `alias claude-work='CLAUDE_CONFIG_DIR=~/clients/acme claude'` in a shell startup file, or a script in `~/bin` or `~/.local/bin` |
+| An account switcher | Folders such as `~/.ccs/instances/work` or `~/.claude-profiles/work` (Claude Code and Codex) |
+| A profile inside an editor | Each profile made in Cursor or VS Code |
+| A second copy of an editor | Cursor Nightly, VS Code Insiders, or one started with `--user-data-dir` from an alias or launcher |
+| The Claude desktop app | Sessions the app runs itself are counted under Claude Code |
+
+Switching accounts inside one folder (signing out and in again) needs nothing: the history stays in the same place.
+
+Not found: history under another user account on the computer, inside a container or WSL, or in a folder that nothing on the machine points to. For a folder, name it once: `CLAUDE_CONFIG_DIR=/path/to/folder npx ai-wrapped-year`. For the rest, use `--export` there and `--import` here.
 
 ## More than one machine
 
@@ -95,6 +109,8 @@ Two options reach the network, and only when you pass them:
 
 - `--github` asks GitHub for your contribution counts through `gh`.
 - `--compare` sends five totals (prompts, tokens, hours, streak, cost), the year and a random id to the percentile server you name. No names, projects, models or dates.
+
+Shell startup files and launcher scripts are searched for the variable names above, to find profiles, and nothing else is taken from them.
 
 Prompts and replies are never stored, printed or sent. The archive holds timestamps, token counts, model names, tool names and project folder names.
 

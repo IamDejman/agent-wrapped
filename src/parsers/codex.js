@@ -1,7 +1,16 @@
 import path from 'node:path';
-import { eachLine, findJsonl, profileDirs, projectName, safeParse } from '../util.js';
+import { eachLine, findJsonl, ls, profileDirs, projectName, safeParse } from '../util.js';
 
 const DIRS = ['sessions', 'archived_sessions'];
+
+/** A folder is a Codex profile when it holds rollouts: sessions/<year>/<month>/ or archived rollout files. */
+const holdsRollouts = (dir) => {
+  const sessions = path.join(dir, 'sessions');
+  return (
+    ls(sessions).some((y) => /^\d{4}$/.test(y) && ls(path.join(sessions, y)).some((m) => /^\d{2}$/.test(m))) ||
+    ls(path.join(dir, 'archived_sessions')).some((f) => f.startsWith('rollout-'))
+  );
+};
 const MARKERS = [
   'session_meta',
   'turn_context',
@@ -37,7 +46,7 @@ const usageEvent = (base, model, u) => {
  */
 export const codex = {
   id: 'codex',
-  profiles: () => profileDirs(process.env.CODEX_HOME, '.codex', DIRS),
+  profiles: () => profileDirs({ env: 'CODEX_HOME', name: '.codex', marks: DIRS, proof: holdsRollouts }),
   list() {
     const byName = new Map();
     for (const home of this.profiles()) {

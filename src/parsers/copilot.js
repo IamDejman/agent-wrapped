@@ -1,32 +1,34 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { appUserDirs, ls, projectName, safeParse } from '../util.js';
+import { appUserDirs, ls, projectName, fullest, safeParse, withProfiles } from '../util.js';
 
 /**
  * Copilot Chat in VS Code: User/workspaceStorage/<workspace>/chatSessions/<session>.json,
  * one file per chat with a requests[] list. It records when each request was
  * made and, in newer versions, the model and tool calls, but never tokens.
+ * Chats in a window with no folder open sit in globalStorage, once per profile.
  */
 export const copilot = {
   id: 'copilot',
   list() {
     const out = [];
-    for (const app of ['Code', 'Code - Insiders', 'VSCodium']) {
+    const add = (chats, group, workspace) => {
+      for (const name of ls(chats)) {
+        if (!/\.jsonl?$/.test(name)) continue;
+        const file = path.join(chats, name);
+        const s = fs.statSync(file);
+        out.push({ key: `${group}/${name}`, file, workspace, size: s.size, mtimeMs: s.mtimeMs });
+      }
+    };
+    for (const app of ['Code', 'VSCodium']) {
       for (const userDir of appUserDirs(app)) {
         const root = path.join(userDir, 'workspaceStorage');
-        for (const ws of ls(root)) {
-          const chats = path.join(root, ws, 'chatSessions');
-          for (const name of ls(chats)) {
-            if (!/\.jsonl?$/.test(name)) continue;
-            const file = path.join(chats, name);
-            const s = fs.statSync(file);
-            out.push({ key: `${ws}/${name}`, file, workspace: path.join(root, ws), size: s.size, mtimeMs: s.mtimeMs });
-          }
-        }
+        for (const ws of ls(root)) add(path.join(root, ws, 'chatSessions'), ws, path.join(root, ws));
+        for (const dir of withProfiles(userDir)) add(path.join(dir, 'globalStorage', 'emptyWindowChatSessions'), 'empty', null);
       }
     }
-    return out;
+    return fullest(out);
   },
 
   read({ file, workspace }, emit) {
@@ -38,7 +40,7 @@ export const copilot = {
 
     let project = null;
     try {
-      const folder = safeParse(fs.readFileSync(path.join(workspace, 'workspace.json'), 'utf8'))?.folder;
+      const folder = workspace && safeParse(fs.readFileSync(path.join(workspace, 'workspace.json'), 'utf8'))?.folder;
       if (folder?.startsWith('file://')) project = projectName(fileURLToPath(folder));
     } catch {
       // no folder for this workspace
