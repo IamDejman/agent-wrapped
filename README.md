@@ -15,7 +15,7 @@ brew install iamdejman/tap/ai-wrapped-year
 ai-wrapped-year
 ```
 
-See a demo wrap at [iamdejman.github.io/ai-wrapped-year](https://iamdejman.github.io/ai-wrapped-year/).
+See a demo wrap at [aiyearwrapped.com](https://aiyearwrapped.com/).
 
 ## What you get
 

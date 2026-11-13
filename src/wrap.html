@@ -418,7 +418,7 @@
   // through the share sheet; elsewhere it goes to the clipboard to be pasted in.
   const apple = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
   const touch = matchMedia('(pointer: coarse)').matches;
-  const HOMEPAGE = 'https://iamdejman.github.io/ai-wrapped-year/';
+  const HOMEPAGE = 'https://aiyearwrapped.com/';
   const POST = `My ${D.year} with AI: ${D.persona.title}. ${num(T.prompts)} prompts, ${short(T.tokens.total)} tokens. Compare with me: npx ai-wrapped-year --vs ${myCode}`;
   const APPS = (() => {
     const q = encodeURIComponent;
