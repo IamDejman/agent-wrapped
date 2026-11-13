@@ -21,7 +21,7 @@ const { loadUsageCsv } = await import('../src/usage-csv.js');
 const readers = SOURCES.filter((s) => s.read).map((s) => s.name);
 const HELP = `agent-wrapped: your year with AI coding tools, computed on this machine.
 
-Usage: npx agent-wrapped [options]
+Usage: npx ai-wrapped-year [options]
 
   --year <yyyy>        Year to wrap (default: this year, or last year during January)
   --usage <file>       Add a usage export (CSV) from an API console: API-key usage that has no local logs
@@ -137,7 +137,7 @@ async function readLogs() {
   if (args.export) {
     try {
       const units = archive.exportTo(args.export);
-      console.error(`Saved ${units.toLocaleString('en')} chats and files to ${args.export}\nOn the other machine: npx agent-wrapped --import ${path.basename(args.export)}`);
+      console.error(`Saved ${units.toLocaleString('en')} chats and files to ${args.export}\nOn the other machine: npx ai-wrapped-year --import ${path.basename(args.export)}`);
     } catch (err) {
       fail(`Could not write ${args.export}: ${err.message}`);
     }
