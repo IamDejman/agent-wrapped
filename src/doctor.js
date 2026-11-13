@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { SOURCES, unreadTools } from './sources.js';
-import { ls, safeParse } from './util.js';
+import { ls, safeParse, tilde } from './util.js';
 
 const day = (ts) => new Date(ts).toISOString().slice(0, 10);
 const count = (n, word) => `${n.toLocaleString('en')} ${word}${n === 1 ? '' : 's'}`;
@@ -40,6 +40,8 @@ async function check(source) {
   const parts = [count(files, 'file'), count(events, 'event')];
   if (events) parts.push(`${day(first)} to ${day(last)}`);
   if (failed) parts.push(`${failed} unreadable`);
+  const profiles = source.profiles?.() ?? [];
+  if (profiles.length > 1) parts.push(`${profiles.length} profiles (${profiles.map(tilde).join(', ')})`);
   if (source.untested) parts.push('reader not checked against real history yet');
   return parts.join(', ');
 }

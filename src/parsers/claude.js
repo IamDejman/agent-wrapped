@@ -1,8 +1,6 @@
-import os from 'node:os';
 import path from 'node:path';
-import { eachLine, findJsonl, projectName, safeParse } from '../util.js';
+import { eachLine, findJsonl, profileDirs, projectName, safeParse } from '../util.js';
 
-const ROOT = path.join(process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude'), 'projects');
 const TOOL_RESULT = Buffer.from('"type":"tool_result"');
 
 /**
@@ -11,10 +9,25 @@ const TOOL_RESULT = Buffer.from('"type":"tool_result"');
  * Most bytes are tool results and request blobs, so lines are filtered on
  * their raw prefix before any JSON.parse. Forked sessions repeat history, so
  * every event carries the id of its message for the wrap to count once.
+ * Every profile is read (see profileDirs). A chat copied from one profile to
+ * another has the same path in both and only grows, so the longer copy is the
+ * one read.
  */
 export const claude = {
   id: 'claude',
-  list: () => findJsonl(ROOT).map((f) => ({ ...f, key: path.relative(ROOT, f.file) })),
+  profiles: () => profileDirs(process.env.CLAUDE_CONFIG_DIR, '.claude', ['projects']),
+  list() {
+    const byKey = new Map();
+    for (const dir of this.profiles()) {
+      const root = path.join(dir, 'projects');
+      for (const f of findJsonl(root)) {
+        const key = path.relative(root, f.file);
+        const held = byKey.get(key);
+        if (!held || f.size > held.size) byKey.set(key, { ...f, key });
+      }
+    }
+    return [...byKey.values()];
+  },
 
   async read({ file, depth }, emit) {
     const mainFile = depth === 1;
