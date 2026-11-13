@@ -1,2 +1,134 @@
 # agent-wrapped
-Your year with AI coding tools, computed on your own machine from the logs they already keep.
+
+Your year with AI coding tools, as a story you can share. It reads the logs those tools already keep on your machine, so there is nothing to sign in to and nothing to upload.
+
+```bash
+npx agent-wrapped
+```
+
+Needs Node 22.13 or newer. No dependencies.
+
+## What you get
+
+A page of slides, like a music app's year in review: prompts, tokens, hours, your longest streak, busiest day, top projects, models, what it would have cost at list prices, what caching saved, and a persona. The last slide saves a 1080x1920 image for sharing.
+
+## Tools it reads
+
+| Tool | Status |
+| --- | --- |
+| Claude Code | Checked against real logs |
+| Codex | Checked against real logs |
+| Cursor | Checked against real logs |
+| Antigravity | Checked against real logs |
+| Grok | Checked against real logs |
+| Copilot Chat (VS Code) | Checked against a small sample |
+| Gemini CLI | Written from the documented format, tested on fixtures only |
+| opencode | Written from the documented format, tested on fixtures only |
+
+Kimi Code, Windsurf, Cline, Roo Code, Continue, Goose, Qwen Code, Factory Droid, Amp and Zed are detected and reported, but not read yet. Run `npx agent-wrapped --doctor` to see what was found for each tool. For tools not read yet it prints the layout of their files (field names only, never contents), which is what a new reader needs. Paste that into an issue.
+
+Models are counted under the tool that called them. DeepSeek, Kimi or any other model used inside one of the tools above shows up there.
+
+## API keys and missing months
+
+Using an API key inside one of the tools above changes nothing: the logs are the same.
+
+Calls made from your own code leave no local logs. Download the usage export (CSV) from your provider's console and add it:
+
+```bash
+npx agent-wrapped --usage usage.csv
+```
+
+Cursor keeps token counts on its servers, not on disk. Add the export from its dashboard:
+
+```bash
+npx agent-wrapped --cursor-csv cursor-usage.csv
+```
+
+Most tools delete old chats. Every run copies what it reads into `~/.agent-wrapped/archive`, so months you have already wrapped stay in your year after the tool removes them. Anything deleted before your first run is gone, so run it early.
+
+## More than one machine
+
+```bash
+npx agent-wrapped --export laptop.gz     # on the other machine
+npx agent-wrapped --import laptop.gz     # on this one
+```
+
+## GitHub
+
+```bash
+npx agent-wrapped --github
+```
+
+Adds commits, pull requests, reviews and active days for the year, through the `gh` CLI you are already signed in to.
+
+## Options
+
+| Option | What it does |
+| --- | --- |
+| `--year <yyyy>` | Year to wrap. Default: this year, or last year during January |
+| `--usage <file>` | Add a usage export (CSV) from an API console |
+| `--cursor-csv <file>` | Add the usage export from Cursor's dashboard |
+| `--paid <usd>` | What you pay per month across your plans, to compare with list prices |
+| `--github` | Add your GitHub activity |
+| `--compare` | Rank your totals against other wraps |
+| `--api <url>` | Percentile server for `--compare` (or set `AGENT_WRAPPED_API`) |
+| `--export <file>` | Save this machine's history to one file |
+| `--import <file>` | Merge a file made by `--export` |
+| `--doctor` | Show what was found for each tool |
+| `--out <file>` | Where to write the page |
+| `--serve <port>` | Serve the page on localhost instead of opening the file |
+| `--json` | Print the numbers as JSON |
+| `--data <file>` | Render from a saved `--json` file |
+| `--no-open` | Don't open the browser |
+
+## Privacy
+
+Everything is computed on your machine. The page is a single file with your numbers inside it, and it makes no network requests.
+
+Two options reach the network, and only when you pass them:
+
+- `--github` asks GitHub for your contribution counts through `gh`.
+- `--compare` sends five totals (prompts, tokens, hours, streak, cost), the year and a random id to the percentile server you name. No names, projects, models or dates.
+
+Prompts and replies are never stored, printed or sent. The archive holds timestamps, token counts, model names, tool names and project folder names.
+
+## Cost
+
+Cost is tokens multiplied by each model's public list price. It is what the usage would cost through the API, not what a subscription charged you. Models without a known price are left out and counted on the slide.
+
+## Personas
+
+One per wrap, first match wins:
+
+| Persona | Rule |
+| --- | --- |
+| The Night Shift | 30% or more of prompts between 10pm and 5am |
+| The Dawn Patrol | 30% or more of prompts between 5am and 9am |
+| The Polyglot | Second tool has 20% or more of prompts |
+| The Weekend Builder | 35% or more of prompts on Saturday and Sunday |
+| The Juggler | 5 or more projects, none above 30% of prompts |
+| The Deep Diver | One project has 60% or more of prompts |
+| The Steady Hand | Everyone else |
+
+## Percentile server
+
+`--compare` needs a server. One is included, with no dependencies:
+
+```bash
+PORT=8787 node server/percentiles.js
+```
+
+It keeps one row per install per year and shows ranks once 20 wraps exist (`MIN_WRAPS`). It stores no IP addresses.
+
+## Adding a tool
+
+A reader is one file in `src/parsers` that lists a tool's files and turns each one into events (`prompt`, `reply`, `tool`). Add it to `src/sources.js`, add a fixture test in `test/readers.test.js`, and run:
+
+```bash
+npm test
+```
+
+## License
+
+MIT

@@ -1,0 +1,10 @@
+node_modules/
+.DS_Store
+.claude/
+
+# Generated wraps and exports hold personal numbers and project names.
+agent-wrapped-*.html
+*.gz
+*.tgz
+*.db
+*.db-*
