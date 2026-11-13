@@ -9,3 +9,4 @@ agent-wrapped-*.html
 *.db
 *.db-*
 _site/
+.wrangler/
