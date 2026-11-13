@@ -47,10 +47,11 @@
     @keyframes fill { from { transform: scaleX(0); } }
   }
 
-  .pause { position: absolute; top: calc(5.5cqw + env(safe-area-inset-top)); right: 6cqw; z-index: 2; width: 9cqw; height: 9cqw; padding: 2cqw; border: 0; background: none; color: var(--ink); cursor: pointer; touch-action: manipulation; }
-  .pause svg { display: block; width: 100%; height: 100%; fill: currentColor; }
-  .pause:hover { color: var(--over); }
-  .pause:focus-visible { outline: 0.8cqw solid var(--over); }
+  .corner { position: absolute; top: calc(5.5cqw + env(safe-area-inset-top)); right: 6cqw; z-index: 2; display: flex; gap: 1cqw; }
+  .icon { width: 9cqw; height: 9cqw; padding: 2cqw; border: 0; background: none; color: var(--ink); cursor: pointer; touch-action: manipulation; }
+  .icon svg { display: block; width: 100%; height: 100%; fill: currentColor; }
+  .icon:hover { color: var(--over); }
+  .icon:focus-visible { outline: 0.8cqw solid var(--over); }
 
   .nav { position: absolute; top: 0; bottom: 0; z-index: 0; padding: 0; border: 0; background: none; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
   .prev { left: 0; width: 30%; }
@@ -136,7 +137,10 @@
 <body>
 <main class="stage" id="stage">
   <ol class="progress" id="progress" aria-hidden="true"></ol>
-  <button class="pause" id="pause" type="button" aria-label="Pause" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg></button>
+  <div class="corner">
+    <button class="icon" id="snap" type="button" aria-label="Save slide" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 3h2v9.2l2.6-2.6L17 11l-5 5-5-5 1.4-1.4 2.6 2.6zM4 14h2v5h12v-5h2v7H4z"/></svg></button>
+    <button class="icon" id="pause" type="button" aria-label="Pause" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg></button>
+  </div>
   <button class="nav prev" id="prev" aria-label="Previous"></button>
   <button class="nav next" id="next" aria-label="Next"></button>
   <section class="slide" id="slide" aria-live="polite"></section>
@@ -346,13 +350,14 @@
   }
 
   const cardName = `agent-wrapped-${D.year}.png`;
-  function saveCard(canvas) {
+  function download(canvas, name) {
     canvas.toBlob((blob) => {
-      const a = el('a', { href: URL.createObjectURL(blob), download: cardName });
+      const a = el('a', { href: URL.createObjectURL(blob), download: name });
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     }, 'image/png');
   }
+  const saveCard = (canvas) => download(canvas, cardName);
 
   // Phones can hand the image straight to another app; elsewhere there is only Save.
   const canShare = (() => {
@@ -555,6 +560,10 @@
   // The ranking you did best in, when --compare returned one.
   const rank = Object.entries(D.rank?.top ?? {}).filter(([, p]) => p > 0).sort((a, b) => a[1] - b[1])[0];
   const RANKED = { prompts: 'prompts', tokens: 'tokens', hours: 'hours', streak: 'streak', cost: 'usage value' };
+  // Slides with no Save button: project names stay on this screen, Compare shows your friend code, and
+  // the card has buttons of its own.
+  const unsaved = new Set();
+  const notSaved = (slide) => (unsaved.add(slide), slide);
 
   const slides = [
     () => [
@@ -617,7 +626,7 @@
         D.longestRun && `Longest unbroken run: ${duration(D.longestRun.ms)}`,
       ),
     ],
-    D.projects.length > 0 && (() => [
+    D.projects.length > 0 && notSaved(() => [
       lead('Your top project'),
       big(D.projects[0].name),
       unit(plural(D.projects[0].prompts, 'prompt')),
@@ -647,7 +656,7 @@
       D.persona.means && unit(D.persona.means),
       facts(D.persona.line, rank && `Top ${rank[1]}% for ${RANKED[rank[0]] ?? rank[0]} among ${plural(D.rank.n, 'wrap')}`),
     ],
-    () => {
+    notSaved(() => {
       const them = friends();
       const cols = [MINE, ...them];
       const ROWS = [['Prompts', 'prompts', short], ['Tokens', 'tokens', short], ['Hours', 'hours', short], ['Day streak', 'streak', num], ['API value', 'cost', money]];
@@ -717,8 +726,8 @@
         add,
         sent,
       ];
-    },
-    () => {
+    }),
+    notSaved(() => {
       const canvas = el('canvas', { class: 'card', role: 'img', 'aria-label': `Share card: ${[D.persona.title, D.persona.means].filter(Boolean).join(', ')}, ${num(T.prompts)} prompts, ${short(T.tokens.total)} tokens` });
       drawCard(canvas);
       const button = (label, run) => {
@@ -743,7 +752,7 @@
         el('div', { class: 'apps' }, apps),
         sent,
       ];
-    },
+    }),
   ].filter(Boolean);
 
   // --- stage ----------------------------------------------------------------
@@ -754,6 +763,7 @@
   const schemeAt = (i) => (i === slides.length - 1 ? 'black' : order[i % order.length]);
   const motion = matchMedia('(prefers-reduced-motion: no-preference)').matches;
   const pause = document.getElementById('pause');
+  const snap = document.getElementById('snap');
   // The site's demo (?loop) starts over after the last slide, until someone clicks it.
   const loop = new URLSearchParams(location.search).has('loop');
   let index = 0;
@@ -799,6 +809,92 @@
     requestAnimationFrame(step);
   }
 
+  // A slide as an image, drawn from where the page put things: each box's fill and top rule, then each
+  // word where it sits on screen, so sizes and line breaks match. Big text gets its offset second colour.
+  function drawSlide(canvas) {
+    const box = stage.getBoundingClientRect();
+    const scale = 1080 / box.width;
+    canvas.width = 1080;
+    canvas.height = Math.round(box.height * scale);
+    const g = canvas.getContext('2d');
+    g.scale(scale, scale);
+    g.translate(-box.left, -box.top);
+    const css = getComputedStyle(stage);
+    g.fillStyle = css.backgroundColor;
+    g.fillRect(box.left, box.top, box.width, box.height);
+    const cq = box.width / 100;
+    g.fillStyle = css.color;
+    g.font = `600 ${3.6 * cq}px ${css.getPropertyValue('--text')}`;
+    g.fillText('aiyearwrapped.com', box.left + 8 * cq, box.top + 9.5 * cq);
+    const range = document.createRange();
+    const rects = (text, from, to) => {
+      range.setStart(text, from);
+      range.setEnd(text, to);
+      return range.getClientRects();
+    };
+    for (const node of slide.querySelectorAll('*')) {
+      const r = node.getBoundingClientRect();
+      if (!r.width || !r.height) continue;
+      const s = getComputedStyle(node);
+      g.globalAlpha = Number(s.opacity);
+      g.fillStyle = s.backgroundColor;
+      g.fillRect(r.left, r.top, r.width, r.height);
+      g.fillStyle = s.borderTopColor;
+      g.fillRect(r.left, r.top, r.width, parseFloat(s.borderTopWidth) || 0);
+      g.globalAlpha = 1;
+      for (const text of node.childNodes) {
+        if (text.nodeType !== Node.TEXT_NODE || !text.data.trim()) continue;
+        g.font = `${s.fontStyle} ${s.fontWeight} ${s.fontSize} ${s.fontFamily}`;
+        if ('letterSpacing' in g) g.letterSpacing = s.letterSpacing === 'normal' ? '0px' : s.letterSpacing;
+        const parts = [];
+        if (s.textOverflow === 'ellipsis' && node.scrollWidth > node.clientWidth) {
+          let str = text.data.trim();
+          while (str.length > 1 && g.measureText(`${str}…`).width > node.clientWidth) str = str.slice(0, -1);
+          str = `${str.trimEnd()}…`;
+          const at = rects(text, 0, text.length)[0];
+          parts.push([str, { left: at.left, top: at.top, height: at.height, width: g.measureText(str).width }]);
+        } else {
+          for (const m of text.data.matchAll(/\S+/g)) {
+            const end = m.index + m[0].length;
+            const word = rects(text, m.index, end);
+            if (word.length === 1) parts.push([m[0], word[0]]);
+            // A word broken across lines goes letter by letter.
+            else for (let i = m.index, ch; i < end; i += ch.length) parts.push([(ch = String.fromCodePoint(text.data.codePointAt(i))), rects(text, i, i + ch.length)[0]]);
+          }
+        }
+        const { fontBoundingBoxAscent: up, fontBoundingBoxDescent: down } = g.measureText(text.data);
+        const put = (c, dx, dy) => {
+          for (const [str, at] of parts) {
+            if (!at) continue;
+            const w = c.measureText(str).width;
+            c.fillText(str, at.left + Math.max(0, (at.width - w) / 2) + dx, at.top + (at.height - up - down) / 2 + up + dy, at.width + 1);
+          }
+        };
+        if (!node.matches('.big span')) {
+          g.fillStyle = s.color;
+          put(g, 0, 0);
+          continue;
+        }
+        // On screen the overprint blends with the numerals alone, not the field, so they get a layer of their own.
+        const layer = Object.assign(document.createElement('canvas'), { width: canvas.width, height: canvas.height }).getContext('2d');
+        layer.setTransform(g.getTransform());
+        layer.font = g.font;
+        if ('letterSpacing' in layer) layer.letterSpacing = g.letterSpacing;
+        const after = getComputedStyle(node, '::after');
+        const size = parseFloat(s.fontSize);
+        layer.fillStyle = s.color;
+        put(layer, 0, 0);
+        layer.fillStyle = after.color;
+        layer.globalCompositeOperation = after.mixBlendMode === 'normal' ? 'source-over' : after.mixBlendMode;
+        put(layer, size * 0.05, size * 0.04);
+        g.save();
+        g.resetTransform();
+        g.drawImage(layer.canvas, 0, 0);
+        g.restore();
+      }
+    }
+  }
+
   function setPaused(paused) {
     stage.classList.toggle('paused', paused);
     pause.setAttribute('aria-label', paused ? 'Play' : 'Pause');
@@ -819,6 +915,7 @@
     const stops = index === slides.length - 1 && !loop;
     stage.classList.toggle('auto', !stops);
     pause.hidden = !motion || stops;
+    snap.hidden = unsaved.has(slides[index]);
     // Previews that embed the page (srcdoc frames) refuse URL changes; the slide still has to show.
     try {
       history.replaceState(null, '', `#${index + 1}`);
@@ -857,8 +954,29 @@
     unfocus(e);
     setPaused(!stage.classList.contains('paused'));
   });
+  // Phones hand the image to the share sheet, where it can go to photos or an app; elsewhere it downloads.
+  const sharing = touch && canShare;
+  if (sharing) {
+    snap.setAttribute('aria-label', 'Share slide');
+    snap.querySelector('path').setAttribute('d', 'M11 6.8 8.4 9.4 7 8l5-5 5 5-1.4 1.4L13 6.8V16h-2zM4 14h2v5h12v-5h2v7H4z');
+  }
+  snap.addEventListener('click', (e) => {
+    unfocus(e);
+    setPaused(true);
+    // Numbers still counting up are set to where they end, so the image never catches one halfway.
+    for (const span of slide.querySelectorAll('.big span')) {
+      if (span.count) span.textContent = span.dataset.text = span.count.format(span.count.value);
+    }
+    const canvas = el('canvas');
+    drawSlide(canvas);
+    const name = `agent-wrapped-${D.year}-${index + 1}.png`;
+    if (!sharing) return download(canvas, name);
+    // Encoded here rather than with toBlob, so the tap's permission to share still holds on iPhone.
+    const bytes = Uint8Array.from(atob(canvas.toDataURL('image/png').split(',')[1]), (c) => c.charCodeAt(0));
+    navigator.share({ files: [new File([bytes], name, { type: 'image/png' })] }).catch((err) => err.name !== 'AbortError' && download(canvas, name));
+  });
   progress.addEventListener('animationend', () => (loop && index === slides.length - 1 ? show(0) : step(1)));
-  if (loop) stage.addEventListener('click', (e) => !e.target.closest('.pause') && setPaused(true));
+  if (loop) stage.addEventListener('click', (e) => !e.target.closest('#pause') && setPaused(true));
   // Someone tabbing through the page is reading at their own pace.
   stage.addEventListener('focusin', (e) => e.target !== pause && e.target.matches(':focus-visible') && setPaused(true));
   document.addEventListener('visibilitychange', () => stage.classList.toggle('away', document.hidden));
