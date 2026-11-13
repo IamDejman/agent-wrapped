@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#2438e8">
+<meta name="theme-color" content="#f7f7f5">
 <title>AI Wrapped Year</title>
 <meta name="description" content="Your year with AI coding tools, as a story you can share. Made on your machine from the logs your tools already keep.">
 <meta property="og:title" content="AI Wrapped Year">
@@ -16,41 +16,44 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@800;900&display=swap">
 <style>
-  /* The wrap's own palette and type: Avenir Next on Apple devices, Barlow Condensed elsewhere. */
+  /* The wrap's inks on paper. Blue carries the page; pink and yellow only print the offsets.
+     Avenir Next on Apple devices, Barlow Condensed elsewhere. */
   :root {
+    --paper: #f7f7f5;
+    --ink: #14205c;
     --blue: #2438e8;
     --pink: #ff5c93;
     --yellow: #ffd23f;
-    --paper: #f6f1e7;
-    --black: #000;
     --display: "Avenir Next Condensed", "Barlow Condensed", "Roboto Condensed", "Arial Narrow", sans-serif;
     --text: "Avenir Next", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     --gutter: clamp(16px, 5vw, 72px);
+    color-scheme: light;
   }
   * { box-sizing: border-box; margin: 0; }
-  body { background: var(--blue); color: var(--paper); font-family: var(--text); font-size: 18px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+  body { background: var(--paper); color: var(--ink); font-family: var(--text); font-size: 18px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
   a { color: inherit; text-underline-offset: 0.18em; text-decoration-thickness: 0.08em; }
-  a:hover { color: var(--over); }
-  :focus-visible { outline: 3px solid var(--over); outline-offset: 3px; }
+  a:hover { color: var(--blue); }
+  :focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
   code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.92em; }
+  p code { white-space: nowrap; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
-  /* Each band is a slide's colour scheme: field, ink, and the second printing colour. */
-  .band { padding: clamp(56px, 9vw, 120px) var(--gutter); background: var(--field); color: var(--ink); }
-  .blue { --field: var(--blue); --ink: var(--paper); --over: var(--pink); --blend: screen; }
-  .yellow { --field: var(--yellow); --ink: var(--blue); --over: var(--pink); --blend: multiply; }
-  .pink { --field: var(--pink); --ink: var(--black); --over: var(--yellow); --blend: multiply; }
-  .black { --field: var(--black); --ink: var(--yellow); --over: var(--pink); --blend: screen; }
+  /* Each band prints its heading with a second ink, named by the band's class. */
+  .band { padding: clamp(48px, 7vw, 96px) var(--gutter); }
+  .band + .band .inner { padding-top: clamp(40px, 6vw, 72px); border-top: 3px solid; }
+  .pink { --over: var(--pink); }
+  .yellow { --over: var(--yellow); }
   .inner { max-width: 1180px; margin: 0 auto; }
 
-  /* The one loud thing, as in the wrap: type printed twice, slightly out of register. */
-  .riso { position: relative; display: inline-block; font-family: var(--display); font-weight: 900; line-height: 0.86; letter-spacing: -0.01em; }
+  /* As in the wrap: type printed twice, slightly out of register, the second ink under the first. */
+  .riso { position: relative; isolation: isolate; display: inline-block; font-family: var(--display); font-weight: 900; line-height: 0.86; letter-spacing: -0.01em; }
   .riso::after {
     content: attr(data-text);
     content: attr(data-text) / "";
     position: absolute;
     inset: 0;
+    z-index: -1;
     color: var(--over);
-    mix-blend-mode: var(--blend);
     transform: translate(0.045em, 0.035em);
   }
   @media (prefers-reduced-motion: no-preference) {
@@ -61,41 +64,42 @@
   .hero { min-height: 100svh; display: grid; align-items: center; padding-top: 32px; padding-bottom: 48px; }
   .hero .inner { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: clamp(32px, 6vw, 96px); align-items: center; width: 100%; }
   .lead { font-size: clamp(30px, 4.4vw, 56px); font-weight: 600; line-height: 1.1; }
-  .year { font-size: clamp(130px, 21vw, 300px); margin: 0.04em 0 0.08em -0.04em; }
+  .year { color: var(--blue); font-size: clamp(130px, 21vw, 300px); margin: 0.04em 0 0.08em -0.04em; }
   .about { max-width: 30ch; margin-top: 28px; font-size: clamp(19px, 1.7vw, 22px); }
 
-  .ways { display: flex; gap: 24px; margin-top: 36px; }
-  .ways button { padding: 6px 0; border: 0; border-bottom: 3px solid transparent; background: none; color: inherit; font: 700 17px var(--text); opacity: 0.7; cursor: pointer; touch-action: manipulation; }
-  .ways button:hover { opacity: 1; }
-  .ways [aria-pressed="true"] { border-color: currentColor; opacity: 1; }
+  .ways { display: flex; flex-wrap: wrap; gap: 4px 24px; margin-top: 36px; }
+  .ways button { padding: 6px 0; border: 0; border-bottom: 3px solid transparent; background: none; color: inherit; font: 700 17px var(--text); cursor: pointer; touch-action: manipulation; }
+  .ways button:hover { color: var(--blue); }
+  .ways [aria-pressed="true"] { border-color: var(--blue); color: var(--blue); }
   .run { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px; margin-top: 14px; }
   .cmd { display: flex; align-items: center; min-width: 0; min-height: 56px; padding: 10px 22px; overflow-wrap: anywhere; border: 2px solid currentColor; font-size: clamp(17px, 1.8vw, 21px); font-weight: 600; user-select: all; }
   .cmd::before { content: "$"; margin-right: 0.6em; opacity: 0.55; user-select: none; }
-  .copy { min-height: 56px; min-width: 104px; padding: 0 22px; border: 0; background: var(--ink); color: var(--field); font: 700 18px var(--text); cursor: pointer; touch-action: manipulation; }
-  .copy:hover { background: var(--over); color: var(--black); }
-  .needs { margin-top: 14px; font-size: 15px; opacity: 0.8; }
+  .copy { min-height: 56px; min-width: 104px; padding: 0 22px; border: 0; background: var(--blue); color: var(--paper); font: 700 18px var(--text); cursor: pointer; touch-action: manipulation; }
+  .copy:hover { background: var(--ink); }
+  .needs { margin-top: 14px; font-size: 15px; }
 
-  /* The demo is the real page, so it plays, taps and shares like a wrap does. */
+  /* The demo is the real page, so it plays, taps and shares like a wrap does. It is the only full-colour thing here. */
   figure { display: grid; gap: 12px; justify-items: center; }
-  .phone { display: block; width: auto; height: min(80svh, 760px); aspect-ratio: 9 / 16; border: 0; background: var(--black); box-shadow: 14px 14px 0 var(--over); }
-  figcaption { font-size: 15px; opacity: 0.8; }
+  .phone { display: block; width: auto; height: min(80svh, 760px); aspect-ratio: 9 / 16; border: 0; background: var(--ink); box-shadow: 14px 14px 0 var(--pink); }
+  figcaption { font-size: 15px; }
 
-  h2 { font-family: var(--display); font-size: clamp(56px, 9vw, 128px); font-weight: 900; line-height: 0.9; letter-spacing: -0.01em; text-wrap: balance; }
+  h2 { font-family: var(--display); font-size: clamp(44px, 6.4vw, 92px); font-weight: 900; line-height: 0.9; letter-spacing: -0.01em; text-wrap: balance; }
   .band p { max-width: 46ch; font-size: clamp(19px, 1.7vw, 22px); }
   .band h2 + p { margin-top: 24px; }
 
-  .tools { display: flex; flex-wrap: wrap; gap: 0.1em 0.5em; margin: 40px 0 36px; padding: 0; list-style: none; font-family: var(--display); font-size: clamp(36px, 5.6vw, 76px); font-weight: 800; line-height: 1.05; }
-  .tools li:nth-child(3n + 2) { color: var(--over); }
+  .tools { display: flex; flex-wrap: wrap; gap: 0.1em 0.5em; margin: 40px 0 36px; padding: 0; list-style: none; font-family: var(--display); font-size: clamp(30px, 4.2vw, 56px); font-weight: 800; line-height: 1.05; }
+  .tools li:nth-child(3n + 2) { color: var(--blue); }
 
-  .snippet { display: block; width: fit-content; max-width: 100%; margin-top: 32px; padding: 18px 22px; border: 2px solid currentColor; font-size: clamp(15px, 1.7vw, 20px); font-weight: 600; overflow-x: auto; white-space: nowrap; }
+  .snippet { display: block; width: fit-content; max-width: 100%; margin-top: 32px; padding: 18px 22px; border: 2px solid currentColor; font-size: clamp(15px, 1.7vw, 20px); font-weight: 600; overflow-wrap: anywhere; }
 
   .promises { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(24px, 4vw, 56px); margin-top: 48px; padding: 0; list-style: none; }
   .promises li { padding-top: 18px; border-top: 3px solid currentColor; font-size: clamp(20px, 2vw, 26px); font-weight: 600; line-height: 1.25; }
-  .net { margin-top: 48px; opacity: 0.85; }
+  .net { margin-top: 48px; }
 
-  footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px 32px; padding: 32px var(--gutter) 40px; background: var(--black); color: var(--paper); font-size: 16px; }
+  footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px 32px; padding: 32px var(--gutter) 40px; background: var(--ink); color: var(--paper); font-size: 16px; }
   footer nav { display: flex; flex-wrap: wrap; gap: 8px 28px; }
-  footer a:hover { color: var(--pink); }
+  footer a:hover { color: var(--yellow); }
+  footer :focus-visible { outline-color: var(--yellow); }
 
   @media (max-width: 860px) {
     .hero { min-height: 0; }
@@ -108,7 +112,7 @@
 </head>
 <body>
 <main>
-  <section class="band blue hero">
+  <section class="band pink hero">
     <div class="inner">
       <div>
         <h1>
@@ -117,13 +121,16 @@
           <span class="lead">with AI</span>
         </h1>
         <p class="about">A story of your year with AI coding tools, made from the logs they already keep on your machine.</p>
-        <div class="ways" role="group" aria-label="How to run it">
+        <div class="ways" role="group" aria-label="How to run it" translate="no">
           <button type="button" aria-pressed="true" data-cmd="npx ai-wrapped-year" data-needs="Needs Node 22.13 or newer.">npx</button>
+          <button type="button" aria-pressed="false" data-cmd="pnpm dlx ai-wrapped-year" data-needs="Needs Node 22.13 or newer.">pnpm</button>
+          <button type="button" aria-pressed="false" data-cmd="bunx --bun ai-wrapped-year" data-needs="Runs on Bun. No Node needed.">Bun</button>
           <button type="button" aria-pressed="false" data-cmd="brew install iamdejman/tap/ai-wrapped-year" data-needs="Then run ai-wrapped-year. Homebrew installs Node for you.">Homebrew</button>
         </div>
         <div class="run">
-          <code class="cmd" id="cmd">npx ai-wrapped-year</code>
+          <code class="cmd" id="cmd" translate="no">npx ai-wrapped-year</code>
           <button class="copy" id="copy" type="button">Copy</button>
+          <span class="sr" id="said" role="status"></span>
         </div>
         <p class="needs" id="needs">Needs Node 22.13 or newer.</p>
       </div>
@@ -136,7 +143,7 @@
 
   <section class="band yellow">
     <div class="inner">
-      <h2>Reads the tools you use</h2>
+      <h2 class="riso" data-text="Reads the tools you use">Reads the tools you use</h2>
       <ul class="tools" translate="no">
         <li>Claude Code</li><li>Codex</li><li>Cursor</li><li>Antigravity</li><li>Grok</li><li>Copilot</li><li>Amp</li><li>Gemini CLI</li><li>opencode</li>
       </ul>
@@ -146,15 +153,15 @@
 
   <section class="band pink">
     <div class="inner">
-      <h2>Compare with friends</h2>
+      <h2 class="riso" data-text="Compare with friends">Compare with friends</h2>
       <p>Every wrap has a friend code: the year, a persona and five totals. Paste a friend's code into your wrap, or run:</p>
       <code class="snippet">npx ai-wrapped-year --vs sam=aw1-1ka.1.3e8.1kqsbm8.2s.e.9ix</code>
     </div>
   </section>
 
-  <section class="band black">
+  <section class="band yellow">
     <div class="inner">
-      <h2>Stays on your machine</h2>
+      <h2 class="riso" data-text="Stays on your machine">Stays on your machine</h2>
       <ul class="promises">
         <li>No sign-in and nothing to upload.</li>
         <li>Prompts and replies are never stored, printed or sent.</li>
@@ -192,6 +199,7 @@
   }
 
   const copy = document.getElementById('copy');
+  const said = document.getElementById('said');
   copy.addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText(document.getElementById('cmd').textContent);
@@ -200,7 +208,8 @@
       getSelection().selectAllChildren(document.getElementById('cmd'));
       copy.textContent = /Mac|iPhone|iPad/.test(navigator.platform) ? 'Press ⌘C' : 'Press Ctrl+C';
     }
-    setTimeout(() => (copy.textContent = 'Copy'), 2000);
+    said.textContent = copy.textContent;
+    setTimeout(() => (copy.textContent = 'Copy', said.textContent = ''), 2000);
   });
 </script>
 </body>
