@@ -555,13 +555,19 @@
   });
   stage.addEventListener('pointercancel', release);
   stage.addEventListener('pointerleave', release);
-  const go = (step) => () => {
+  // A click (detail > 0, unlike Enter or Space) lets go of focus, or the next arrow key draws the focus ring over the slide.
+  const unfocus = (e) => e.detail && e.currentTarget.blur();
+  const go = (step) => (e) => {
+    unfocus(e);
     if (held) held = false;
     else show(index + step);
   };
   document.getElementById('prev').addEventListener('click', go(-1));
   document.getElementById('next').addEventListener('click', go(1));
-  pause.addEventListener('click', () => setPaused(!stage.classList.contains('paused')));
+  pause.addEventListener('click', (e) => {
+    unfocus(e);
+    setPaused(!stage.classList.contains('paused'));
+  });
   progress.addEventListener('animationend', () => show(index + 1));
   // Someone tabbing through the page is reading at their own pace.
   stage.addEventListener('focusin', (e) => e.target !== pause && e.target.matches(':focus-visible') && setPaused(true));
