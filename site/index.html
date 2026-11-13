@@ -113,7 +113,7 @@
       before_send: (event) => {
         if (!event) return event;
         for (const bag of [event.properties, event.$set, event.$set_once]) scrub(bag);
-        event.properties.from_share = /^#vs=aw1-/i.test(location.hash);
+        event.properties.from_share = /^#vs=/i.test(location.hash);
         return event;
       },
     });
@@ -169,7 +169,8 @@
   big.dataset.text = year;
 
   // A shared card links here with its friend code, so the command compares with whoever shared it.
-  const code = (location.hash.match(/^#vs=(aw1-[0-9a-z]+(?:\.[0-9a-z]+){6})$/i) || [])[1];
+  // Codes are six letters and digits; links posted before those carry an aw1- code.
+  const code = (location.hash.match(/^#vs=([0-9a-hjkmnp-tv-z]{6}|aw1-[0-9a-z]+(?:\.[0-9a-z]+){6})$/i) || [])[1];
   const vs = code ? ` --vs ${code.toLowerCase()}` : '';
   const cmd = document.getElementById('cmd');
   const needs = document.getElementById('needs');

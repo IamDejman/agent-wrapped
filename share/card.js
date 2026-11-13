@@ -23,6 +23,16 @@ export function readCode(text) {
   return { code, year, persona: PERSONAS[persona - 1], ...Object.fromEntries(FIELDS.map((f, i) => [f, totals[i]])) };
 }
 
+// A short code is six of Crockford's letters, which leave out I, L, O and U. It names one card's totals,
+// which the share server keeps, so links and friend codes carry no numbers. Typing O for 0, or I or L
+// for 1, still finds it.
+const LETTERS = '0123456789abcdefghjkmnpqrstvwxyz';
+export function readShort(text) {
+  const id = String(text).toLowerCase().replace(/o/g, '0').replace(/[il]/g, '1');
+  return /^[0-9a-hjkmnp-tv-z]{6}$/.test(id) ? id : null;
+}
+export const newShort = () => Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => LETTERS[b & 31]).join('');
+
 // The wrap's number formats.
 const num = (n) => Math.round(n).toLocaleString('en');
 const trim = (x) => (x >= 100 ? String(Math.round(x)) : x.toFixed(1).replace(/\.0$/, ''));

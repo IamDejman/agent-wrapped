@@ -107,7 +107,7 @@
   .card { align-self: center; height: 86cqw; aspect-ratio: 9 / 16; margin-top: 4cqw; }
   .actions { display: flex; gap: 3cqw; align-self: center; margin-top: 5cqw; }
   .save { padding: 3.2cqw 8cqw; border: 0; background: var(--ink); color: var(--field); font: 700 5cqw var(--text); cursor: pointer; touch-action: manipulation; }
-  .save + .save { background: none; color: var(--ink); box-shadow: inset 0 0 0 0.6cqw var(--ink); }
+  .save + .save, .mine + .save { background: none; color: var(--ink); box-shadow: inset 0 0 0 0.6cqw var(--ink); }
   .save:hover { background: var(--over); color: var(--field); box-shadow: none; }
   .save:focus-visible { outline: 0.8cqw solid var(--over); outline-offset: 0.8cqw; }
   .apps { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.6cqw; margin-top: 4cqw; }
@@ -124,6 +124,7 @@
   .pair { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2cqw; margin-top: 4cqw; }
   .push { margin-top: auto; }
   .mine { grid-column: 1 / -1; margin: 0; font-size: 4.6cqw; font-weight: 700; overflow-wrap: anywhere; user-select: text; }
+  .mine:empty { display: none; }
   .mine + .save { justify-self: start; }
   .pair .save { padding: 2.4cqw 4cqw; font-size: 4cqw; }
   .field { min-width: 0; padding: 2.4cqw 3cqw; border: 0; border-radius: 0; background: none; color: var(--ink); box-shadow: inset 0 0 0 0.5cqw var(--ink); font: 600 max(16px, 4cqw) var(--text); user-select: text; }
@@ -362,10 +363,15 @@
     }
   })();
   // The image made ahead keeps the tap's permission to share, which waiting for toBlob can lose on iPhone.
-  function shareCard(canvas, png) {
-    const send = (blob) => {
-      navigator.share({ files: [new File([blob], cardName, { type: 'image/png' })], text: `${POST} ${LINK}` }).catch((err) => {
-        if (err.name !== 'AbortError') saveCard(canvas); // closing the share sheet is not a failure
+  // The link is asked for at once for the same reason; if it comes too late, the next tap already has it.
+  function shareCard(canvas, png, say) {
+    const fresh = !myCode;
+    const linked = link();
+    const send = async (blob) => {
+      const url = await linked;
+      navigator.share({ files: [new File([blob], cardName, { type: 'image/png' })], text: `${POST} ${url}` }).catch((err) => {
+        if (fresh && err.name === 'NotAllowedError' && say) say('Tap Share again.');
+        else if (err.name !== 'AbortError') saveCard(canvas); // closing the share sheet is not a failure
       });
     };
     if (png) send(png);
@@ -373,7 +379,7 @@
   }
 
   // --- friends ------------------------------------------------------------
-  // A friend code holds the year, the persona and five totals, nothing else, so it can be posted anywhere.
+  // What a wrap compares: the year, the persona and five totals, nothing else, packed as an aw1- code.
   const PERSONAS = ['The Night Shift', 'The Dawn Patrol', 'The Polyglot', 'The Weekend Builder', 'The Juggler', 'The Deep Diver', 'The Steady Hand'];
   const FIELDS = ['prompts', 'tokens', 'hours', 'streak', 'cost'];
   const MINE = {
@@ -384,12 +390,52 @@
     streak: D.streak?.days ?? 0,
     cost: Math.round(D.cost?.total ?? 0),
   };
-  const myCode = `aw1-${[D.year, PERSONAS.indexOf(D.persona.title) + 1, ...FIELDS.map((f) => MINE[f])].map((n) => Math.max(0, Math.round(n)).toString(36)).join('.')}`;
+  const myTotals = `aw1-${[D.year, PERSONAS.indexOf(D.persona.title) + 1, ...FIELDS.map((f) => MINE[f])].map((n) => Math.max(0, Math.round(n)).toString(36)).join('.')}`;
   function readCode(text) {
     const code = String(text).match(/aw1-[0-9a-z]+(?:\.[0-9a-z]+){6}/i)?.[0].toLowerCase();
     const [year, persona, ...totals] = code ? code.slice(4).split('.').map((n) => parseInt(n, 36)) : [];
     if (!code || ![year, persona, ...totals].every(Number.isSafeInteger)) return null;
     return { code, year, persona: PERSONAS[persona - 1], ...Object.fromEntries(FIELDS.map((f, i) => [f, totals[i]])) };
+  }
+
+  // A friend code is six letters and digits that the share server keeps for those totals, so codes and
+  // links carry no numbers. The page asks for yours only when you copy it or share your card, and
+  // remembers it. Older aw1- codes still work, without the server.
+  const SHARE = 'https://share.aiyearwrapped.com';
+  const SHORT = /^[0-9a-hjkmnp-tv-z]{6}$/;
+  // The last word of what was pasted: the code alone, or a command or link ending in it. O reads as 0,
+  // I and L as 1, since codes leave those letters out.
+  const readShort = (text) => {
+    const word = String(text).replace(/\?.*$/s, '').split(/[^0-9a-z]+/i).filter(Boolean).pop() ?? '';
+    const id = word.toLowerCase().replace(/o/g, '0').replace(/[il]/g, '1');
+    return SHORT.test(id) ? id : null;
+  };
+  const CODE = `agent-wrapped-code-${D.year}`;
+  let myCode = null;
+  try {
+    const saved = JSON.parse(localStorage.getItem(CODE));
+    if (saved?.totals === myTotals && SHORT.test(saved.code)) myCode = saved.code;
+  } catch {}
+  let asking = null;
+  const getCode = () =>
+    myCode
+      ? Promise.resolve(myCode)
+      : (asking ??= fetch(`${SHARE}/v1/codes`, { method: 'POST', body: myTotals })
+          .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`share server answered ${res.status}`))))
+          .then(({ code }) => {
+            if (!SHORT.test(code)) throw new Error('share server sent no code');
+            try {
+              localStorage.setItem(CODE, JSON.stringify({ totals: myTotals, code }));
+            } catch {}
+            return (myCode = code);
+          })
+          .finally(() => (asking = null)));
+  // A friend's short code, as their totals. Null when no wrap has it.
+  async function lookUp(id) {
+    const res = await fetch(`${SHARE}/v1/codes/${id}`);
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(`share server answered ${res.status}`);
+    return readCode((await res.json()).totals ?? '');
   }
   // Codes pasted into the page stay in this browser; codes from --vs come with the page.
   const KEPT = `agent-wrapped-friends-${D.year}`;
@@ -409,7 +455,7 @@
     const byCode = new Map();
     for (const f of [...(D.friends ?? []), ...kept()]) {
       const d = readCode(f?.code ?? '');
-      if (d && d.code !== myCode) byCode.set(d.code, { ...d, name: String(f.name || 'Friend').slice(0, 24) });
+      if (d && d.code !== myTotals) byCode.set(d.code, { ...d, name: String(f.name || 'Friend').slice(0, 24) });
     }
     return [...byCode.values()].slice(-3);
   }
@@ -418,27 +464,30 @@
   // through the share sheet; elsewhere it goes to the clipboard to be pasted in.
   const apple = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
   const touch = matchMedia('(pointer: coarse)').matches;
-  // The link's preview is this card, drawn by share.aiyearwrapped.com from the code alone, and it opens
-  // the site with the compare command filled in.
-  const LINK = `https://share.aiyearwrapped.com/${myCode}`;
+  // A post links to your code's page on share.aiyearwrapped.com, whose preview is this card and which
+  // opens the site with the compare command filled in. If the server can't be reached it links to the
+  // site, and the post still has the card pasted in.
+  const link = () => getCode().then((code) => `${SHARE}/${code}`, () => 'https://aiyearwrapped.com/');
   const SUMMARY = `My ${D.year} with AI: ${D.persona.title}. ${num(T.prompts)} prompts, ${short(T.tokens.total)} tokens.`;
   const POST = `${SUMMARY} Compare with me:`;
   const APPS = (() => {
     const q = encodeURIComponent;
     return [
-      ['X', `https://x.com/intent/tweet?text=${q(POST)}&url=${q(LINK)}`],
-      ['LinkedIn', `https://www.linkedin.com/sharing/share-offsite/?url=${q(LINK)}`],
-      ['Facebook', `https://www.facebook.com/sharer/sharer.php?u=${q(LINK)}`],
-      ['WhatsApp', `https://wa.me/?text=${q(`${POST} ${LINK}`)}`],
-      ['Reddit', `https://www.reddit.com/submit?url=${q(LINK)}&title=${q(SUMMARY)}`],
-      apple && ['Messages', `sms:&body=${q(`${POST} ${LINK}`)}`],
-      ['Instagram', 'https://www.instagram.com/'],
-      ['Discord', 'https://discord.com/channels/@me'],
+      ['X', (to) => `https://x.com/intent/tweet?text=${q(POST)}&url=${q(to)}`],
+      // LinkedIn's share link takes a URL and nothing else; its post box takes text and previews the link in it.
+      ['LinkedIn', (to) => `https://www.linkedin.com/feed/?shareActive=true&text=${q(`${POST} ${to}`)}`],
+      ['Facebook', (to) => `https://www.facebook.com/sharer/sharer.php?u=${q(to)}`],
+      ['WhatsApp', (to) => `https://wa.me/?text=${q(`${POST} ${to}`)}`],
+      ['Reddit', (to) => `https://www.reddit.com/submit?url=${q(to)}&title=${q(SUMMARY)}`],
+      apple && ['Messages', (to) => `sms:&body=${q(`${POST} ${to}`)}`],
+      ['Instagram', () => 'https://www.instagram.com/'],
+      ['Discord', () => 'https://discord.com/channels/@me'],
     ].filter(Boolean);
   })();
-  async function postTo(name, url, canvas, png, say) {
+  async function postTo(name, make, canvas, png, say) {
     // A link can't carry an image, but a phone's share sheet can, into whichever app is picked there.
-    if (touch && canShare) return shareCard(canvas, png);
+    if (touch && canShare) return shareCard(canvas, png, say);
+    const linked = make.length ? link() : null; // asked for while the clipboard takes the card
     let copied = false;
     if (name !== 'Instagram' && png && window.ClipboardItem) {
       try {
@@ -449,9 +498,15 @@
       }
     }
     if (!copied) saveCard(canvas);
-    say(copied ? `Card copied. Paste it with ${apple ? '⌘V' : 'Ctrl+V'}.` : `Card saved. Add it to your ${name === 'Messages' ? 'message' : 'post'}.`);
-    if (url.startsWith('https:')) window.open(url, '_blank', 'noopener');
-    else location.href = url;
+    const url = make(await linked);
+    const done = copied ? `Card copied. Paste it with ${apple ? '⌘V' : 'Ctrl+V'}.` : `Card saved. Add it to your ${name === 'Messages' ? 'message' : 'post'}.`;
+    say(done);
+    if (url.startsWith('https:')) {
+      // Without noopener, so a blocked tab shows as null; the app still gets no handle on this page.
+      const tab = window.open(url, '_blank');
+      if (tab) tab.opener = null;
+      else say(`${done} Click ${name} again to open it.`);
+    } else location.href = url;
   }
 
   // --- slides ---------------------------------------------------------------
@@ -575,8 +630,20 @@
       const mine = el('p', { class: 'mine', translate: 'no' }, myCode);
       const copy = el('button', { class: 'save', type: 'button' }, 'Copy my code');
       copy.addEventListener('click', async () => {
+        const asked = getCode();
+        // Safari copies only what a click hands over at once, so a code still on its way goes in as a promise.
+        const early = !myCode && window.ClipboardItem
+          ? navigator.clipboard.write([new ClipboardItem({ 'text/plain': asked.then((c) => new Blob([c], { type: 'text/plain' })) })]).then(() => true, () => false)
+          : Promise.resolve(false);
+        let mineNow;
         try {
-          await navigator.clipboard.writeText(myCode);
+          mineNow = await asked;
+        } catch {
+          return say('Your code could not be made. Check your connection and try again.');
+        }
+        mine.textContent = mineNow;
+        try {
+          if (!(await early)) await navigator.clipboard.writeText(mineNow);
           say('Copied. Send it to a friend.');
         } catch {
           getSelection().selectAllChildren(mine);
@@ -587,14 +654,28 @@
       const code = el('input', { class: 'field', name: 'code', autocomplete: 'off', spellcheck: 'false', placeholder: 'Friend’s code…', 'aria-label': 'Friend’s code' });
       const name = el('input', { class: 'field', name: 'name', autocomplete: 'off', maxlength: '24', placeholder: 'Their name…', 'aria-label': 'Their name' });
       const add = el('form', { class: 'pair add' }, code, name, el('button', { class: 'save', type: 'submit' }, 'Compare'));
-      add.addEventListener('submit', (e) => {
+      add.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const d = readCode(code.value);
+        let d = readCode(code.value);
+        const id = !d && readShort(code.value);
+        if (id && id === myCode) return say('That one is your own code.');
+        if (id) {
+          say('Looking up the code…');
+          try {
+            d = await lookUp(id);
+          } catch {
+            return say('The code could not be looked up. Check your connection and try again.');
+          }
+          if (!d) {
+            say('No wrap has that code. Check it and try again.');
+            return code.focus();
+          }
+        }
         if (!d) {
-          say('Friend codes start with aw1-. Paste the whole code.');
+          say('That is not a friend code. Paste the code or the link your friend sent.');
           return code.focus();
         }
-        if (d.code === myCode) return say('That one is your own code.');
+        if (d.code === myTotals) return say('That one is your own code.');
         keep([...kept().filter((f) => f.code !== d.code), { name: name.value.trim() || 'Friend', code: d.code }]);
         show(index);
       });
@@ -614,7 +695,7 @@
       drawCard(canvas);
       const button = (label, run) => {
         const b = el('button', { class: 'save', type: 'button' }, label);
-        b.addEventListener('click', () => run(canvas, png));
+        b.addEventListener('click', () => run(canvas, png, say));
         return b;
       };
       // Made ahead, so a click can put it on the clipboard straight away.

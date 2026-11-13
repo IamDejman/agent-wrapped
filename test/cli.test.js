@@ -57,8 +57,19 @@ test('friends: --vs takes codes from anywhere in what was pasted, and refuses th
     { name: 'Sam', code: 'aw1-1ka.1.3e8.1kqsbm8.2s.e.9ix' },
     { name: 'Friend 2', code: 'aw1-1ka.5.8ck.4xqbfzk.ds.1o.2h8n' },
   ]);
-  assert.throws(() => friendCodes(['aw1-1ka.1']), /not a friend code/);
   assert.throws(() => run('--vs', 'nonsense', '--json'), /not a friend code/);
+});
+
+test('friends: a short code or a link to one is looked up, and an aw1- code is read without the network', async () => {
+  const asked = [];
+  const find = async (code) => (asked.push(code), 'aw1-1ka.1.3e8.1kqsbm8.2s.e.9ix');
+  assert.deepEqual(await friendCodes(['Sam=K7F2QA', 'https://aiyearwrapped.com/#vs=b0x1y1', 'aw1-1ka.5.8ck.4xqbfzk.ds.1o.2h8n'], find), [
+    { name: 'Sam', code: 'aw1-1ka.1.3e8.1kqsbm8.2s.e.9ix' },
+    { name: 'Friend 2', code: 'aw1-1ka.1.3e8.1kqsbm8.2s.e.9ix' },
+    { name: 'Friend 3', code: 'aw1-1ka.5.8ck.4xqbfzk.ds.1o.2h8n' },
+  ]);
+  assert.deepEqual(asked, ['k7f2qa', 'b0x1y1']);
+  await assert.rejects(friendCodes(['aw1-1ka.1'], find), /not a friend code/);
 });
 
 test('friends: the page numbers personas in the order the wrap names them', () => {
